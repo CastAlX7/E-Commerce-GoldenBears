@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_admin
+from app.dependencies import require_admin
 from app.models.user import User
 from app.schemas.product import ProductOut, ProductCreate, ProductUpdate, ProductListResponse, CategoryOut, BrandOut
 from app.services import product_service
@@ -17,9 +17,10 @@ async def list_products(
     search: str | None = Query(None),
     category_id: int | None = Query(None),
     brand_id: int | None = Query(None),
+    enabled_only: bool = Query(True),
     db: AsyncSession = Depends(get_db),
 ):
-    return await product_service.list_products(db, page, size, search, category_id, brand_id)
+    return await product_service.list_products(db, page, size, search, category_id, brand_id, enabled_only)
 
 
 @router.get("/products/{product_id}", response_model=ProductOut)
