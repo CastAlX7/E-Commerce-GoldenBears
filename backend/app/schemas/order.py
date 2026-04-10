@@ -30,6 +30,7 @@ class PaymentIn(BaseModel):
 class CheckoutInitiateRequest(BaseModel):
     shipping_city: str
     receipt_type: str  # "boleta" or "factura"
+    payment_method: str = "card"  # "card" or "yape_plin"
 
 
 class CheckoutConfirmRequest(BaseModel):
@@ -66,6 +67,7 @@ class OrderOut(BaseModel):
     subtotal: Decimal
     shipping_cost: Decimal
     tax_amount: Decimal
+    payment_fee: Decimal
     total: Decimal
     shipping_city: str
     created_at: datetime
@@ -80,6 +82,7 @@ class CheckoutSummary(BaseModel):
     subtotal: Decimal
     shipping_cost: Decimal
     tax_amount: Decimal
+    payment_fee: Decimal
     total: Decimal
     shipping_city: str
     estimated_delivery: str

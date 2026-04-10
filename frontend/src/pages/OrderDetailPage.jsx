@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useLocation, Link } from 'react-router-dom'
-import { CheckCircle, RotateCcw } from 'lucide-react'
+import { CheckCircle, ShoppingCart } from 'lucide-react'
 import api from '../api/client'
 import { useCart } from '../contexts/CartContext'
 
@@ -10,23 +10,25 @@ export default function OrderDetailPage() {
   const { fetchCart } = useCart()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [buyingAgain, setBuyingAgain] = useState(false)
+  const [addingItem, setAddingItem] = useState(null)
+  const [addedItems, setAddedItems] = useState({})
   const success = location.state?.success
 
   useEffect(() => {
     api.get(`/orders/${id}`).then(r => setOrder(r.data)).finally(() => setLoading(false))
   }, [id])
 
-  const handleBuyAgain = async () => {
-    setBuyingAgain(true)
+  const handleAddToCart = async (productId, quantity) => {
+    setAddingItem(productId)
     try {
-      await api.post(`/orders/${id}/buy-again`)
+      await api.post('/cart/items', { product_id: productId, quantity })
       await fetchCart()
-      alert('Productos agregados al carrito')
+      setAddedItems(prev => ({ ...prev, [productId]: true }))
+      setTimeout(() => setAddedItems(prev => ({ ...prev, [productId]: false })), 2000)
     } catch {
-      alert('Error al agregar productos')
+      alert('Error al agregar al carrito')
     } finally {
-      setBuyingAgain(false)
+      setAddingItem(null)
     }
   }
 
@@ -42,16 +44,11 @@ export default function OrderDetailPage() {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <div>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Pedido #{order.tracking_id || order.id.slice(0, 8).toUpperCase()}</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-              {new Date(order.created_at).toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-            </p>
-          </div>
-          <button onClick={handleBuyAgain} disabled={buyingAgain} className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <RotateCcw size={14} /> {buyingAgain ? '...' : 'Comprar de nuevo'}
-          </button>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Pedido #{order.tracking_id || order.id.slice(0, 8).toUpperCase()}</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+            {new Date(order.created_at).toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </p>
         </div>
 
         {/* Products */}
@@ -72,7 +69,23 @@ export default function OrderDetailPage() {
                     S/ {parseFloat(item.unit_price).toFixed(2)} x {item.quantity}
                   </p>
                 </div>
-                <span style={{ fontWeight: 700 }}>S/ {parseFloat(item.subtotal).toFixed(2)}</span>
+                <span style={{ fontWeight: 700, marginRight: '0.75rem' }}>S/ {parseFloat(item.subtotal).toFixed(2)}</span>
+                <button
+                  onClick={() => handleAddToCart(item.product_id, item.quantity)}
+                  disabled={addingItem === item.product_id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '4px',
+                    padding: '6px 10px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600,
+                    border: '1.5px solid var(--primary)',
+                    background: addedItems[item.product_id] ? 'var(--primary)' : '#fff',
+                    color: addedItems[item.product_id] ? '#fff' : 'var(--primary)',
+                    cursor: addingItem === item.product_id ? 'default' : 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <ShoppingCart size={13} />
+                  {addingItem === item.product_id ? '...' : addedItems[item.product_id] ? '¡Agregado!' : 'Agregar'}
+                </button>
               </div>
             ))}
           </div>
@@ -85,6 +98,7 @@ export default function OrderDetailPage() {
             ['Subtotal', `S/ ${parseFloat(order.subtotal).toFixed(2)}`],
             ['Envío', `S/ ${parseFloat(order.shipping_cost).toFixed(2)}`],
             ['IGV (18%)', `S/ ${parseFloat(order.tax_amount).toFixed(2)}`],
+            ...(parseFloat(order.payment_fee) > 0 ? [['Comisión Visa (3.5%)', `S/ ${parseFloat(order.payment_fee).toFixed(2)}`]] : []),
           ].map(([label, value]) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '0.4rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>{label}</span>

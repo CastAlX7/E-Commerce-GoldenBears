@@ -16,6 +16,13 @@ from app.schemas.order import CheckoutConfirmRequest
 SHIPPING_LIMA = Decimal("15.00")
 SHIPPING_PROVINCIAS = Decimal("25.00")
 IGV_RATE = Decimal("0.18")
+PAYMENT_FEE_CARD = Decimal("0.035")
+PAYMENT_FEE_YAPE = Decimal("0.00")
+
+
+def calculate_payment_fee(method: str, subtotal: Decimal) -> Decimal:
+    rate = PAYMENT_FEE_CARD if method == "card" else PAYMENT_FEE_YAPE
+    return (subtotal * rate).quantize(Decimal("0.01"))
 
 
 def calculate_shipping(city: str) -> tuple[Decimal, str]:
@@ -33,7 +40,7 @@ def tokenize_card(card_number: str) -> tuple[str, str]:
     return token, last4
 
 
-async def initiate_checkout(db: AsyncSession, user_id: str, shipping_city: str, receipt_type: str) -> dict:
+async def initiate_checkout(db: AsyncSession, user_id: str, shipping_city: str, receipt_type: str, payment_method: str = "card") -> dict:
     result = await db.execute(
         select(CartItem)
         .options(selectinload(CartItem.product))
@@ -95,12 +102,14 @@ async def initiate_checkout(db: AsyncSession, user_id: str, shipping_city: str, 
 
     shipping_cost, estimated_delivery = calculate_shipping(shipping_city)
     tax_amount = (subtotal * IGV_RATE).quantize(Decimal("0.01"))
-    total = subtotal + shipping_cost + tax_amount
+    payment_fee = calculate_payment_fee(payment_method, subtotal)
+    total = subtotal + shipping_cost + tax_amount + payment_fee
 
     return {
         "subtotal": subtotal,
         "shipping_cost": shipping_cost,
         "tax_amount": tax_amount,
+        "payment_fee": payment_fee,
         "total": total,
         "shipping_city": shipping_city,
         "estimated_delivery": estimated_delivery,
@@ -152,7 +161,8 @@ async def confirm_checkout(db: AsyncSession, user_id: str, data: CheckoutConfirm
 
     shipping_cost, _ = calculate_shipping(data.shipping_city)
     tax_amount = (subtotal * IGV_RATE).quantize(Decimal("0.01"))
-    total = subtotal + shipping_cost + tax_amount
+    payment_fee = calculate_payment_fee(data.payment.method, subtotal)
+    total = subtotal + shipping_cost + tax_amount + payment_fee
 
     order_id = str(uuid.uuid4())
     order = Order(
@@ -163,6 +173,7 @@ async def confirm_checkout(db: AsyncSession, user_id: str, data: CheckoutConfirm
         subtotal=subtotal,
         shipping_cost=shipping_cost,
         tax_amount=tax_amount,
+        payment_fee=payment_fee,
         total=total,
         shipping_city=data.shipping_city,
         paid_at=now,

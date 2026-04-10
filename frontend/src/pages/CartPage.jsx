@@ -88,12 +88,22 @@ export default function CartPage() {
                 </div>
               ))}
             </div>
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '1.1rem' }}>
-              <span>Subtotal</span>
-              <span>S/ {parseFloat(cart.subtotal).toFixed(2)}</span>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                <span>Subtotal</span>
+                <span>S/ {parseFloat(cart.subtotal).toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                <span>IGV estimado (18%)</span>
+                <span>S/ {(parseFloat(cart.subtotal) * 0.18).toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.1rem', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border)' }}>
+                <span>Estimado</span>
+                <span>S/ {(parseFloat(cart.subtotal) * 1.18).toFixed(2)}</span>
+              </div>
             </div>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              Envío e impuestos calculados al finalizar la compra
+              Envío y comisión de pago calculados al finalizar la compra
             </p>
             <button onClick={() => navigate('/checkout')} className="btn-primary" style={{ width: '100%', padding: '0.85rem', fontSize: '1rem', marginTop: '1rem' }}>
               Finalizar compra

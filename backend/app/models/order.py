@@ -16,6 +16,7 @@ class Order(Base):
     subtotal: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     shipping_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    payment_fee: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("0.00"))
     total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     shipping_city: Mapped[str] = mapped_column(String(100), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

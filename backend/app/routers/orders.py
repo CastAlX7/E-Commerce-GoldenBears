@@ -16,7 +16,7 @@ async def initiate_checkout(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await order_service.initiate_checkout(db, current_user.id, body.shipping_city, body.receipt_type)
+    return await order_service.initiate_checkout(db, current_user.id, body.shipping_city, body.receipt_type, body.payment_method)
 
 
 @router.post("/checkout/confirm", response_model=OrderOut, status_code=201)

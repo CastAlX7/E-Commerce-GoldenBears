@@ -43,6 +43,7 @@ export default function CheckoutPage() {
       const { data } = await api.post('/orders/checkout/initiate', {
         shipping_city: shippingCity,
         receipt_type: receiptType,
+        payment_method: payMethod,
       })
       setSummary(data)
       expiresAtRef.current = Date.now() + data.lock_expires_in_minutes * 60 * 1000
@@ -302,22 +303,38 @@ export default function CheckoutPage() {
               <span>Subtotal</span>
               <span>S/ {summary ? parseFloat(summary.subtotal).toFixed(2) : parseFloat(cart.subtotal).toFixed(2)}</span>
             </div>
-            {summary && (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Envío ({summary.estimated_delivery})</span>
-                  <span style={{ color: 'var(--primary)' }}>S/ {parseFloat(summary.shipping_cost).toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                  <span>IGV (18%)</span>
-                  <span>S/ {parseFloat(summary.tax_amount).toFixed(2)}</span>
-                </div>
-              </>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.2rem', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '2px solid var(--border)' }}>
-              <span>TOTAL</span>
-              <span>S/ {summary ? parseFloat(summary.total).toFixed(2) : parseFloat(cart.subtotal).toFixed(2)}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+              <span>IGV (18%)</span>
+              <span>S/ {summary ? parseFloat(summary.tax_amount).toFixed(2) : (parseFloat(cart.subtotal) * 0.18).toFixed(2)}</span>
             </div>
+            {summary && (() => {
+              const fee = payMethod === 'card' ? parseFloat(summary.subtotal) * 0.035 : 0
+              const total = parseFloat(summary.subtotal) + parseFloat(summary.shipping_cost) + parseFloat(summary.tax_amount) + fee
+              return (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Envío ({summary.estimated_delivery})</span>
+                    <span style={{ color: 'var(--primary)' }}>S/ {parseFloat(summary.shipping_cost).toFixed(2)}</span>
+                  </div>
+                  {fee > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Comisión Visa (3.5%)</span>
+                      <span>S/ {fee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.2rem', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '2px solid var(--border)' }}>
+                    <span>TOTAL</span>
+                    <span>S/ {total.toFixed(2)}</span>
+                  </div>
+                </>
+              )
+            })()}
+            {!summary && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.2rem', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '2px solid var(--border)' }}>
+                <span>TOTAL</span>
+                <span>S/ {parseFloat(cart.subtotal).toFixed(2)}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
