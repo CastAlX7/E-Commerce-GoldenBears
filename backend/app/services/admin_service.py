@@ -1,5 +1,6 @@
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 
@@ -93,6 +94,32 @@ async def list_all_clients(db: AsyncSession, page: int = 1, size: int = 20) -> d
         ))
 
     return {"items": clients, "total": total, "page": page, "pages": max(1, -(-total // size))}
+
+
+async def toggle_client_active(db: AsyncSession, user_id: str) -> None:
+    result = await db.execute(select(User).where(User.id == user_id, User.role == "customer"))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+    user.is_active = not user.is_active
+
+
+async def delete_client(db: AsyncSession, user_id: str) -> None:
+    result = await db.execute(select(User).where(User.id == user_id, User.role == "customer"))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+
+    order_count = (await db.execute(
+        select(func.count()).select_from(Order).where(Order.user_id == user_id)
+    )).scalar_one()
+    if order_count:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede eliminar: el cliente tiene pedidos asociados. Puedes suspender su cuenta en su lugar.",
+        )
+
+    await db.delete(user)
 
 
 async def get_analytics(db: AsyncSession) -> AnalyticsOut:

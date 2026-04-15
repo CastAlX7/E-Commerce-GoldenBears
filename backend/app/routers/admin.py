@@ -38,6 +38,24 @@ async def list_all_clients(
     return await admin_service.list_all_clients(db, page, size)
 
 
+@router.patch("/clients/{user_id}/toggle", status_code=204)
+async def toggle_client_active(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    await admin_service.toggle_client_active(db, user_id)
+
+
+@router.delete("/clients/{user_id}", status_code=204)
+async def delete_client(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    await admin_service.delete_client(db, user_id)
+
+
 @router.get("/analytics", response_model=AnalyticsOut)
 async def get_analytics(
     db: AsyncSession = Depends(get_db),

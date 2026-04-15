@@ -4,7 +4,7 @@ from jose import JWTError, jwt
 
 from app.database import get_db
 from app.config import settings
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, UserOut
+from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest, UserOut, DeleteAccountRequest
 from app.services.auth_service import register_user, authenticate_user, create_access_token, create_refresh_token
 from app.dependencies import get_current_user
 from app.models.user import User
@@ -63,3 +63,31 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.delete("/me", status_code=204)
+async def delete_account(
+    body: DeleteAccountRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from sqlalchemy import select, func
+    from app.models.order import Order
+
+    if body.email != current_user.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El correo no coincide con tu cuenta",
+        )
+
+    order_count = (await db.execute(
+        select(func.count()).select_from(Order).where(Order.user_id == current_user.id)
+    )).scalar_one()
+    if order_count:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No puedes eliminar tu cuenta porque tienes pedidos registrados.",
+        )
+
+    await db.delete(current_user)
+    await db.commit()

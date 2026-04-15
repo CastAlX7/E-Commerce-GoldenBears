@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ShoppingCart, Search, User, ChevronDown, LogOut, Package, LayoutDashboard } from 'lucide-react'
+import { ShoppingCart, Search, User, ChevronDown, LogOut, Package, LayoutDashboard, Settings } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useCart } from '../contexts/CartContext'
 import api from '../api/client'
@@ -132,6 +132,11 @@ export default function Navbar() {
                 {user.role === 'admin' && (
                   <Link to="/admin" onClick={() => setShowUser(false)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.5rem 1rem', color: 'var(--text-dark)', fontSize: '0.9rem' }}>
                     <LayoutDashboard size={14} /> Admin Panel
+                  </Link>
+                )}
+                {user.role === 'customer' && (
+                  <Link to="/account" onClick={() => setShowUser(false)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.5rem 1rem', color: 'var(--text-dark)', fontSize: '0.9rem' }}>
+                    <Settings size={14} /> Mi cuenta
                   </Link>
                 )}
                 <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.5rem 1rem', color: 'var(--error)', fontSize: '0.9rem', width: '100%', background: 'none', textAlign: 'left' }}>

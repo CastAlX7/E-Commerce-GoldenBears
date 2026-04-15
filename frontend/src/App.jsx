@@ -17,6 +17,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminOrdersPage from './pages/admin/AdminOrdersPage'
 import AdminClientsPage from './pages/admin/AdminClientsPage'
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage'
+import AccountPage from './pages/AccountPage'
 
 export default function App() {
   return (
@@ -38,6 +39,9 @@ export default function App() {
             } />
             <Route path="/orders/:id" element={
               <ProtectedRoute><OrderDetailPage /></ProtectedRoute>
+            } />
+            <Route path="/account" element={
+              <ProtectedRoute><AccountPage /></ProtectedRoute>
             } />
             <Route path="/admin" element={
               <ProtectedRoute adminOnly><AdminDashboardPage /></ProtectedRoute>
