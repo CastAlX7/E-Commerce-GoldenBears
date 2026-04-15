@@ -51,13 +51,22 @@ async def update_product(
     return await product_service.update_product(db, product_id, body)
 
 
-@router.delete("/products/{product_id}", status_code=204)
-async def delete_product(
+@router.patch("/products/{product_id}/disable", status_code=204)
+async def disable_product(
     product_id: str,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
 ):
     await product_service.delete_product(db, product_id)
+
+
+@router.delete("/products/{product_id}", status_code=204)
+async def hard_delete_product(
+    product_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    await product_service.hard_delete_product(db, product_id)
 
 
 @router.get("/categories", response_model=list[CategoryOut])

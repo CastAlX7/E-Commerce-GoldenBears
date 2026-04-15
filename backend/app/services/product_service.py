@@ -1,12 +1,35 @@
 import math
 import uuid
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 
 from app.models.product import Product, Category, Brand
+from app.models.order import OrderItem
 from app.schemas.product import ProductCreate, ProductUpdate
+
+_IMAGES_DIR = Path(__file__).parent.parent.parent / "static" / "images"
+
+# IDs fijos de los 15 productos del seed — su imagen nunca se borra del disco
+_SEED_PRODUCT_IDS = {
+    "c9c10297-463b-4f6a-a144-9b523dadd969",  # iPhone 15 Pro
+    "44012204-0874-44de-bd3e-c9e30805c51a",  # MacBook Air M2
+    "e3e9a207-0954-447e-be3b-a90b21bd2b02",  # AirPods Pro 2
+    "2193b55b-49f0-4647-8a71-38fb3e15f27b",  # Sony WH-1000XM5
+    "28c1b8aa-97a9-443d-a03e-4de662acb5cd",  # Sony PlayStation 5
+    "c81d3a87-3190-45f1-b1c0-fb3c76b97c61",  # Dell XPS 15
+    "737d92dd-62fd-4f51-971e-6f46e97b3f45",  # Nike Air Max 270
+    "d8555879-94a9-45ce-a94f-1c2f635273a3",  # Nike Pro Dri-FIT
+    "7dedb9da-2676-40bb-a035-49e9324dc046",  # Adidas Ultraboost 23
+    "44c2fd70-5a5a-4888-a2b1-7b08fb1edeb5",  # Puma RS-X
+    "135ee79a-92ae-463b-ac31-ded6685b56ed",  # Samsung Galaxy S24 Ultra
+    "9773d65f-3e71-434d-9549-2b045cba4d7f",  # Samsung Neo QLED 4K 55"
+    "405d976c-7d8c-4d78-bd3f-d3e2977b32c5",  # LG OLED C3 65"
+    "8c1842f0-72d1-41ad-bebe-b5076cd96bc6",  # Bosch Serie 6 Lavadora
+    "719ebe33-2191-40ff-86ee-ecce1f857e9e",  # Apple Watch Series 9
+}
 
 
 async def list_products(
@@ -75,6 +98,25 @@ async def update_product(db: AsyncSession, product_id: str, data: ProductUpdate)
 async def delete_product(db: AsyncSession, product_id: str) -> None:
     product = await get_product(db, product_id)
     product.is_enabled = False
+
+
+async def hard_delete_product(db: AsyncSession, product_id: str) -> None:
+    product = await get_product(db, product_id)
+
+    has_orders = (await db.execute(
+        select(func.count()).select_from(OrderItem).where(OrderItem.product_id == product_id)
+    )).scalar_one()
+    if has_orders:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede eliminar: el producto tiene pedidos asociados. Puedes deshabilitarlo en su lugar.",
+        )
+
+    await db.delete(product)
+
+    if product_id not in _SEED_PRODUCT_IDS:
+        for f in _IMAGES_DIR.glob(f"{product_id}.*"):
+            f.unlink(missing_ok=True)
 
 
 async def list_categories(db: AsyncSession) -> list[Category]:

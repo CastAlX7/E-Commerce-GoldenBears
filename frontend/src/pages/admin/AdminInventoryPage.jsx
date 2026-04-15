@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Eye, EyeOff, Edit, Plus, Upload, X } from 'lucide-react'
+import { Eye, EyeOff, Edit, Plus, Upload, X, Trash2 } from 'lucide-react'
 import AdminSidebar from '../../components/AdminSidebar'
 import api from '../../api/client'
 
@@ -15,6 +15,9 @@ export default function AdminInventoryPage() {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const fileInputRef = useRef(null)
+  const [confirmDelete, setConfirmDelete] = useState(null) // producto a eliminar o null
+  const [deleteError, setDeleteError] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   const fetchProducts = () => {
     setLoading(true)
@@ -91,6 +94,21 @@ export default function AdminInventoryPage() {
       await api.put(`/products/${product.id}`, { is_enabled: !product.is_enabled })
       fetchProducts()
     } catch {}
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!confirmDelete) return
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      await api.delete(`/products/${confirmDelete.id}`)
+      setConfirmDelete(null)
+      fetchProducts()
+    } catch (e) {
+      setDeleteError(e.response?.data?.detail || 'Error al eliminar el producto')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const startEdit = (product) => {
@@ -187,6 +205,9 @@ export default function AdminInventoryPage() {
                           </button>
                           <button onClick={() => toggleEnabled(product)} title={product.is_enabled ? 'Deshabilitar' : 'Habilitar'} style={{ background: 'none', padding: '4px', color: product.is_enabled ? 'var(--text-muted)' : 'var(--success)' }}>
                             {product.is_enabled ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                          <button onClick={() => { setConfirmDelete(product); setDeleteError('') }} title="Eliminar permanentemente" style={{ background: 'none', padding: '4px', color: '#ef4444' }}>
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>
@@ -296,6 +317,41 @@ export default function AdminInventoryPage() {
           </div>
         </div>
       </main>
+
+      {/* Modal de confirmación de eliminación */}
+      {confirmDelete && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '420px', padding: '1.75rem', margin: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '8px', display: 'flex' }}>
+                <Trash2 size={20} color="#ef4444" />
+              </div>
+              <h3 style={{ fontWeight: 700, fontSize: '1rem' }}>Eliminar producto</h3>
+            </div>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+              ¿Estás seguro de que deseas eliminar permanentemente:
+            </p>
+            <p style={{ fontWeight: 600, fontSize: '0.95rem', marginBottom: '1rem' }}>
+              "{confirmDelete.name}"
+            </p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem', background: '#fef9c3', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #fde047' }}>
+              Esta acción no se puede deshacer. La imagen del producto también será eliminada del servidor.
+              {confirmDelete.orders_count > 0 && ' Este producto tiene pedidos asociados y no podrá eliminarse.'}
+            </p>
+            {deleteError && (
+              <div className="alert alert-error" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>{deleteError}</div>
+            )}
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button onClick={() => { setConfirmDelete(null); setDeleteError('') }} disabled={deleting} className="btn-secondary" style={{ padding: '0.6rem 1.2rem' }}>
+                Cancelar
+              </button>
+              <button onClick={handleDeleteConfirm} disabled={deleting} style={{ padding: '0.6rem 1.2rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 600, cursor: deleting ? 'default' : 'pointer', opacity: deleting ? 0.7 : 1 }}>
+                {deleting ? 'Eliminando...' : 'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

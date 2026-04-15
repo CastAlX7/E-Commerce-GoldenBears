@@ -5,9 +5,12 @@ Creates initial categories, brands, sample products, and an admin user.
 import asyncio
 import uuid
 from decimal import Decimal
+from pathlib import Path
 from app.database import AsyncSessionLocal, engine, Base
 from app.models import User, Profile, Category, Brand, Product
 from app.services.auth_service import hash_password
+
+IMAGES_DIR = Path(__file__).parent / "static" / "images"
 
 
 CATEGORIES = [
@@ -115,6 +118,18 @@ async def main():
             print(f"Admin created: {admin_email} / Admin1234!")
 
         await db.commit()
+
+        # Limpiar imágenes huérfanas: conservar solo las de los 15 productos base
+        seed_image_stems = {p["id"] for p in PRODUCTS}
+        if IMAGES_DIR.exists():
+            removed = 0
+            for img in IMAGES_DIR.iterdir():
+                if img.stem not in seed_image_stems:
+                    img.unlink(missing_ok=True)
+                    removed += 1
+            if removed:
+                print(f"Imágenes huérfanas eliminadas: {removed}")
+
         print("Seed completed successfully!")
 
 

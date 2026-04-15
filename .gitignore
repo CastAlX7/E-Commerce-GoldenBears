@@ -25,3 +25,21 @@ frontend/.cache/
 # OS
 .DS_Store
 Thumbs.db
+
+# Imágenes subidas por el admin (solo las del seed se versionan)
+backend/static/images/*
+!backend/static/images/c9c10297-463b-4f6a-a144-9b523dadd969.png
+!backend/static/images/44012204-0874-44de-bd3e-c9e30805c51a.jpg
+!backend/static/images/e3e9a207-0954-447e-be3b-a90b21bd2b02.png
+!backend/static/images/2193b55b-49f0-4647-8a71-38fb3e15f27b.jpg
+!backend/static/images/28c1b8aa-97a9-443d-a03e-4de662acb5cd.jpg
+!backend/static/images/c81d3a87-3190-45f1-b1c0-fb3c76b97c61.png
+!backend/static/images/737d92dd-62fd-4f51-971e-6f46e97b3f45.png
+!backend/static/images/d8555879-94a9-45ce-a94f-1c2f635273a3.jpg
+!backend/static/images/7dedb9da-2676-40bb-a035-49e9324dc046.png
+!backend/static/images/44c2fd70-5a5a-4888-a2b1-7b08fb1edeb5.jpg
+!backend/static/images/135ee79a-92ae-463b-ac31-ded6685b56ed.jpg
+!backend/static/images/9773d65f-3e71-434d-9549-2b045cba4d7f.png
+!backend/static/images/405d976c-7d8c-4d78-bd3f-d3e2977b32c5.jpg
+!backend/static/images/8c1842f0-72d1-41ad-bebe-b5076cd96bc6.png
+!backend/static/images/719ebe33-2191-40ff-86ee-ecce1f857e9e.jpg
