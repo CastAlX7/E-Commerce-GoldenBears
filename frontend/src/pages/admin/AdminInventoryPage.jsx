@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Eye, EyeOff, Edit, Plus } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Eye, EyeOff, Edit, Plus, Upload, X } from 'lucide-react'
 import AdminSidebar from '../../components/AdminSidebar'
 import api from '../../api/client'
 
@@ -12,6 +12,9 @@ export default function AdminInventoryPage() {
   const [editId, setEditId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const fileInputRef = useRef(null)
 
   const fetchProducts = () => {
     setLoading(true)
@@ -24,6 +27,29 @@ export default function AdminInventoryPage() {
     fetchProducts()
     api.get('/categories').then(r => setCategories(r.data)).catch(() => {})
   }, [page])
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  const clearImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    setForm(f => ({ ...f, image_url: '' }))
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const uploadImage = async (productId, file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await api.post(`/products/${productId}/upload-image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -40,13 +66,18 @@ export default function AdminInventoryPage() {
       }
       if (editId) {
         await api.put(`/products/${editId}`, payload)
+        if (imageFile) await uploadImage(editId, imageFile)
         setMsg('Producto actualizado')
         setEditId(null)
       } else {
-        await api.post('/products', payload)
+        const { data } = await api.post('/products', payload)
+        if (imageFile) await uploadImage(data.id, imageFile)
         setMsg('Producto creado')
       }
       setForm({ name: '', description: '', price: '', stock: '', category_id: '', image_url: '' })
+      setImageFile(null)
+      setImagePreview(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
       fetchProducts()
     } catch (e) {
       setMsg(e.response?.data?.detail || 'Error al guardar')
@@ -72,6 +103,9 @@ export default function AdminInventoryPage() {
       category_id: product.category_id ? String(product.category_id) : '',
       image_url: product.image_url || '',
     })
+    setImageFile(null)
+    setImagePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
     window.scrollTo(0, 0)
   }
 
@@ -207,15 +241,53 @@ export default function AdminInventoryPage() {
                 </select>
               </div>
               <div className="form-group">
-                <label>URL de imagen</label>
-                <input value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://..." />
+                <label>Imagen del producto</label>
+                {/* Preview de la imagen actual o seleccionada */}
+                {(imagePreview || form.image_url) && (
+                  <div style={{ position: 'relative', width: '100%', height: '140px', marginBottom: '0.5rem', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)', background: '#f9fafb' }}>
+                    <img
+                      src={imagePreview || form.image_url}
+                      alt="Preview"
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      onError={e => { e.target.style.display = 'none' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      title="Quitar imagen"
+                      style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                    >
+                      <X size={14} />
+                    </button>
+                    {imagePreview && (
+                      <span style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '0.68rem', padding: '2px 6px', borderRadius: '4px' }}>
+                        Nueva — pendiente de guardar
+                      </span>
+                    )}
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={handleImageChange}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{ width: '100%', padding: '0.6rem', border: '1px dashed var(--border)', borderRadius: '6px', background: '#f9fafb', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--text-muted)' }}
+                >
+                  <Upload size={15} />
+                  {imageFile ? imageFile.name : 'Seleccionar imagen del equipo'}
+                </button>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <button type="submit" disabled={saving} className="btn-primary" style={{ flex: 1, padding: '0.75rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                   {saving ? 'Guardando...' : editId ? <><Edit size={14} /> Actualizar producto</> : <><Plus size={14} /> Guardar en catálogo</>}
                 </button>
                 {editId && (
-                  <button type="button" onClick={() => { setEditId(null); setForm({ name: '', description: '', price: '', stock: '', category_id: '', image_url: '' }) }} className="btn-secondary" style={{ padding: '0.75rem' }}>
+                  <button type="button" onClick={() => { setEditId(null); setForm({ name: '', description: '', price: '', stock: '', category_id: '', image_url: '' }); setImageFile(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = '' }} className="btn-secondary" style={{ padding: '0.75rem' }}>
                     Cancelar
                   </button>
                 )}

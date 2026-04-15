@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Query
+from pathlib import Path
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -6,6 +7,9 @@ from app.dependencies import require_admin
 from app.models.user import User
 from app.schemas.product import ProductOut, ProductCreate, ProductUpdate, ProductListResponse, CategoryOut, BrandOut
 from app.services import product_service
+
+IMAGES_DIR = Path(__file__).parent.parent.parent / "static" / "images"
+ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 router = APIRouter(prefix="/api", tags=["products"])
 
@@ -67,3 +71,26 @@ async def list_brands(
     db: AsyncSession = Depends(get_db),
 ):
     return await product_service.list_brands(db, category_id)
+
+
+@router.post("/products/{product_id}/upload-image", response_model=ProductOut)
+async def upload_product_image(
+    product_id: str,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(status_code=400, detail="Solo se permiten imágenes (jpeg, png, webp, gif)")
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
+
+    # Eliminar imagen anterior del mismo producto si existe
+    for old in IMAGES_DIR.glob(f"{product_id}.*"):
+        old.unlink()
+
+    dest = IMAGES_DIR / f"{product_id}.{ext}"
+    dest.write_bytes(await file.read())
+
+    image_url = f"/static/images/{product_id}.{ext}"
+    return await product_service.update_product(db, product_id, ProductUpdate(image_url=image_url))
