@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useLocation, Link } from 'react-router-dom'
-import { CheckCircle, ShoppingCart } from 'lucide-react'
+import { CheckCircle, ShoppingCart, Mail } from 'lucide-react'
 import api from '../api/client'
 import { useCart } from '../contexts/CartContext'
 
@@ -13,6 +13,8 @@ export default function OrderDetailPage() {
   const [addingItem, setAddingItem] = useState(null)
   const [addedItems, setAddedItems] = useState({})
   const success = location.state?.success
+  const emailSent = location.state?.email_sent
+  const emailAddress = location.state?.email_address
 
   useEffect(() => {
     api.get(`/orders/${id}`).then(r => setOrder(r.data)).finally(() => setLoading(false))
@@ -39,8 +41,20 @@ export default function OrderDetailPage() {
     <div className="page-wrapper">
       <div className="container" style={{ maxWidth: '760px' }}>
         {success && (
-          <div className="alert alert-success" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem' }}>
+          <div className="alert alert-success" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
             <CheckCircle size={18} /> ¡Compra realizada exitosamente! Tu pedido está siendo procesado.
+          </div>
+        )}
+
+        {success && emailSent && emailAddress && (
+          <div className="alert" style={{
+            display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem',
+            background: '#fff7ed', color: '#92400e',
+            border: '1px solid #fed7aa', borderLeft: '4px solid #FF9900',
+            borderRadius: '6px', padding: '12px 16px',
+          }}>
+            <Mail size={18} style={{ flexShrink: 0 }} />
+            <span>Comprobante enviado a <strong>{emailAddress}</strong>. Revisa tu bandeja de entrada.</span>
           </div>
         )}
 

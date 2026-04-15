@@ -76,7 +76,9 @@ export default function CheckoutPage() {
         },
       })
       await fetchCart()
-      navigate(`/orders/${data.id}`, { state: { success: true } })
+      navigate(`/orders/${data.id}`, {
+        state: { success: true, email_sent: data.email_sent, email_address: data.email_address },
+      })
     } catch (e) {
       setError(e.response?.data?.detail || 'Error al confirmar compra')
     } finally {
@@ -201,8 +203,8 @@ export default function CheckoutPage() {
                       <input value={billing.direccion_fiscal} onChange={e => setBilling(b => ({ ...b, direccion_fiscal: e.target.value }))} placeholder="Av. Principal 123, Lima" required />
                     </div>
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label>Email de facturación</label>
-                      <input type="email" value={billing.billing_email} onChange={e => setBilling(b => ({ ...b, billing_email: e.target.value }))} placeholder="billing@empresa.com" />
+                      <label>Email de facturación <span style={{ fontWeight: 400, color: '#6b7280' }}>(opcional)</span></label>
+                      <input type="email" value={billing.billing_email} onChange={e => setBilling(b => ({ ...b, billing_email: e.target.value }))} placeholder="contabilidad@empresa.com — si deseas recibirla en un correo distinto al tuyo" />
                     </div>
                   </>
                 )}

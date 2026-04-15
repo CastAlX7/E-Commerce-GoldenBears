@@ -78,6 +78,11 @@ class OrderOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CheckoutConfirmResponse(OrderOut):
+    email_sent: bool = False
+    email_address: str | None = None
+
+
 class CheckoutSummary(BaseModel):
     subtotal: Decimal
     shipping_cost: Decimal

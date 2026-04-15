@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.order import CheckoutInitiateRequest, CheckoutConfirmRequest, CheckoutSummary, OrderOut
+from app.schemas.order import CheckoutInitiateRequest, CheckoutConfirmRequest, CheckoutSummary, OrderOut, CheckoutConfirmResponse
 from app.services import order_service
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
@@ -19,13 +19,19 @@ async def initiate_checkout(
     return await order_service.initiate_checkout(db, current_user.id, body.shipping_city, body.receipt_type, body.payment_method)
 
 
-@router.post("/checkout/confirm", response_model=OrderOut, status_code=201)
+@router.post("/checkout/confirm", response_model=CheckoutConfirmResponse, status_code=201)
 async def confirm_checkout(
     body: CheckoutConfirmRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await order_service.confirm_checkout(db, current_user.id, body)
+    result = await order_service.confirm_checkout(db, current_user, body)
+    order = result["order"]
+    return {
+        **OrderOut.model_validate(order).model_dump(),
+        "email_sent": result["email_sent"],
+        "email_address": result["email_address"],
+    }
 
 
 @router.get("", response_model=list[OrderOut])

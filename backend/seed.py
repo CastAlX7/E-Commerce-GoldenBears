@@ -103,7 +103,7 @@ async def main():
 
         # Admin user
         from sqlalchemy import select
-        admin_email = "admin@goldenbears.com"
+        admin_email = "stilesvcc@gmail.com"
         existing_admin = (await db.execute(select(User).where(User.email == admin_email))).scalar_one_or_none()
         if not existing_admin:
             admin = User(

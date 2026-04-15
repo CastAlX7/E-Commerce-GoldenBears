@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 from app.models.cart import CartItem
 from app.models.product import Product, StockLock
 from app.models.order import Order, OrderItem, BillingDetail, PaymentToken
+from app.models.user import User
 from app.schemas.order import CheckoutConfirmRequest
 
 
@@ -118,11 +119,11 @@ async def initiate_checkout(db: AsyncSession, user_id: str, shipping_city: str, 
     }
 
 
-async def confirm_checkout(db: AsyncSession, user_id: str, data: CheckoutConfirmRequest) -> Order:
+async def confirm_checkout(db: AsyncSession, user: User, data: CheckoutConfirmRequest) -> dict:
     result = await db.execute(
         select(CartItem)
         .options(selectinload(CartItem.product))
-        .where(CartItem.user_id == user_id)
+        .where(CartItem.user_id == user.id)
     )
     cart_items = result.scalars().all()
     if not cart_items:
@@ -167,7 +168,7 @@ async def confirm_checkout(db: AsyncSession, user_id: str, data: CheckoutConfirm
     order_id = str(uuid.uuid4())
     order = Order(
         id=order_id,
-        user_id=user_id,
+        user_id=user.id,
         status="paid",
         receipt_type=data.receipt_type,
         subtotal=subtotal,
@@ -229,7 +230,36 @@ async def confirm_checkout(db: AsyncSession, user_id: str, data: CheckoutConfirm
         await db.delete(cart_item)
 
     await db.flush()
-    return await get_order(db, order_id, user_id)
+
+    completed_order = await get_order(db, order_id, user.id)
+
+    # Generar PDF y lanzar envío de correo en background (no bloquea la respuesta)
+    import asyncio
+    import logging
+    email_address = None
+    email_scheduled = False
+    try:
+        from app.services.pdf_service import generate_receipt_pdf
+        from app.services.email_service import send_receipt_email, _determine_recipient_email
+        pdf_bytes = generate_receipt_pdf(completed_order, user)
+        email_address = _determine_recipient_email(completed_order, user)
+
+        async def _send():
+            try:
+                await send_receipt_email(completed_order, user, pdf_bytes)
+            except Exception as e:
+                logging.getLogger(__name__).error(
+                    "Error enviando correo en background para orden %s: %s", order_id, e
+                )
+
+        asyncio.create_task(_send())
+        email_scheduled = True
+    except Exception as exc:
+        logging.getLogger(__name__).error(
+            "Error generando PDF para la orden %s: %s", order_id, exc
+        )
+
+    return {"order": completed_order, "email_sent": email_scheduled, "email_address": email_address}
 
 
 async def get_order(db: AsyncSession, order_id: str, user_id: str) -> Order:
@@ -239,6 +269,7 @@ async def get_order(db: AsyncSession, order_id: str, user_id: str) -> Order:
             selectinload(Order.items).selectinload(OrderItem.product).selectinload(Product.category),
             selectinload(Order.items).selectinload(OrderItem.product).selectinload(Product.brand),
             selectinload(Order.billing_detail),
+            selectinload(Order.payment_token),
         )
         .where(Order.id == order_id, Order.user_id == user_id)
     )
