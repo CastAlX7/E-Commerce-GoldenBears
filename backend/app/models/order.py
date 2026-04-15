@@ -1,9 +1,16 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from sqlalchemy import String, Integer, DateTime, ForeignKey, Numeric, Enum as SAEnum, func, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.product import Product
 
 
 class Order(Base):

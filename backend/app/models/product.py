@@ -1,9 +1,16 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from decimal import Decimal
+from typing import TYPE_CHECKING
 from sqlalchemy import String, Boolean, DateTime, Float, Integer, Numeric, Text, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from decimal import Decimal
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.cart import CartItem
+    from app.models.order import OrderItem
 
 
 class Category(Base):
