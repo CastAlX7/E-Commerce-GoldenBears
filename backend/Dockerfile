@@ -3,7 +3,7 @@ FROM python:3.13-slim
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip sintall --nocache-dir -r requirements.txt
+RUN pip intall --nocache-dir -r requirements.txt
 
 COPY . .
 
