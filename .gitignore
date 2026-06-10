@@ -43,3 +43,7 @@ backend/static/images/*
 !backend/static/images/405d976c-7d8c-4d78-bd3f-d3e2977b32c5.jpg
 !backend/static/images/8c1842f0-72d1-41ad-bebe-b5076cd96bc6.png
 !backend/static/images/719ebe33-2191-40ff-86ee-ecce1f857e9e.jpg
+
+# Docker
+.env.docker
+docker-compose.override.yml
