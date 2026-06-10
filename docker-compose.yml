@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 1234
-      POSTGRES_DB: golden-bears
+      POSTGRES_DB: golden_bears
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -21,11 +21,11 @@ services:
     build: ./backend
     env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:1234@postgres:5432/golden-bears
+      DATABASE_URL: postgresql+asyncpg://postgres:1234@postgres:5432/golden_bears
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/statics/images:/app/static/images
+      - ./backend/static/images:/app/static/images
     depends_on:
       postgres:
         condition: service_healthy
