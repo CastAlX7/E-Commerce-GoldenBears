@@ -1,5 +1,10 @@
 from pydantic import BaseModel
 from decimal import Decimal
+import re
+
+
+def _slugify(name: str) -> str:
+    return re.sub(r'[^a-z0-9]+', '-', name.lower().strip()).strip('-')
 
 
 class CategoryOut(BaseModel):
@@ -61,3 +66,33 @@ class ProductListResponse(BaseModel):
     page: int
     size: int
     pages: int
+
+
+class CategoryCreate(BaseModel):
+    name: str
+
+    @property
+    def slug(self) -> str:
+        return _slugify(self.name)
+
+
+class CategoryUpdate(BaseModel):
+    name: str
+
+    @property
+    def slug(self) -> str:
+        return _slugify(self.name)
+
+
+class BrandCreate(BaseModel):
+    name: str
+    category_id: int | None = None
+
+    @property
+    def slug(self) -> str:
+        return _slugify(self.name)
+
+
+class BrandUpdate(BaseModel):
+    name: str | None = None
+    category_id: int | None = None

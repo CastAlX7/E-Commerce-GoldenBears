@@ -1,9 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
-import { Eye, EyeOff, Edit, Plus, Upload, X, Trash2 } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { Eye, EyeOff, Edit, Plus, Upload, X, Trash2, AlertTriangle } from 'lucide-react'
 import AdminSidebar from '../../components/AdminSidebar'
 import api from '../../api/client'
 
 export default function AdminInventoryPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const lowStockFilter = searchParams.get('low_stock') === 'true'
+
   const [products, setProducts] = useState({ items: [], total: 0, page: 1, pages: 1 })
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -22,14 +26,21 @@ export default function AdminInventoryPage() {
   const fetchProducts = () => {
     setLoading(true)
     api.get('/products', { params: { page, size: 10, enabled_only: false } })
-      .then(r => setProducts(r.data))
+      .then(r => {
+        if (lowStockFilter) {
+          const filtered = r.data.items.filter(p => p.stock <= 10)
+          setProducts({ ...r.data, items: filtered, total: filtered.length })
+        } else {
+          setProducts(r.data)
+        }
+      })
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
     fetchProducts()
     api.get('/categories').then(r => setCategories(r.data)).catch(() => {})
-  }, [page])
+  }, [page, lowStockFilter])
 
   const handleImageChange = (e) => {
     const file = e.target.files[0]
@@ -134,9 +145,21 @@ export default function AdminInventoryPage() {
       {/* Main */}
       <main style={{ flex: 1, padding: '2rem', overflow: 'auto' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>Inventario de Productos</h1>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+        <p style={{ color: 'var(--text-muted)', marginBottom: lowStockFilter ? '0.75rem' : '1.5rem', fontSize: '0.9rem' }}>
           Administra tu catálogo, niveles de stock y disponibilidad de productos.
         </p>
+        {lowStockFilter && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fef3c7', border: '1px solid #fde047', borderRadius: '6px', padding: '0.6rem 0.9rem', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
+            <AlertTriangle size={15} color="#92400e" />
+            <span style={{ color: '#92400e', fontWeight: 600 }}>Mostrando solo productos con stock bajo (≤10 unidades)</span>
+            <button
+              onClick={() => setSearchParams({})}
+              style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.82rem', fontWeight: 500 }}
+            >
+              <X size={13} /> Ver todos
+            </button>
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '1.5rem', alignItems: 'start' }}>
           {/* Table */}

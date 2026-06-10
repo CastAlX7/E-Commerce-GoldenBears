@@ -5,7 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import require_admin
 from app.models.user import User
-from app.schemas.product import ProductOut, ProductCreate, ProductUpdate, ProductListResponse, CategoryOut, BrandOut
+from app.schemas.product import (
+    ProductOut, ProductCreate, ProductUpdate, ProductListResponse,
+    CategoryOut, BrandOut, CategoryCreate, CategoryUpdate, BrandCreate, BrandUpdate,
+)
 from app.services import product_service
 
 IMAGES_DIR = Path(__file__).parent.parent.parent / "static" / "images"
@@ -80,6 +83,62 @@ async def list_brands(
     db: AsyncSession = Depends(get_db),
 ):
     return await product_service.list_brands(db, category_id)
+
+
+@router.post("/categories", response_model=CategoryOut, status_code=201)
+async def create_category(
+    body: CategoryCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    return await product_service.create_category(db, body)
+
+
+@router.put("/categories/{category_id}", response_model=CategoryOut)
+async def update_category(
+    category_id: int,
+    body: CategoryUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    return await product_service.update_category(db, category_id, body)
+
+
+@router.delete("/categories/{category_id}", status_code=204)
+async def delete_category(
+    category_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    await product_service.delete_category(db, category_id)
+
+
+@router.post("/brands", response_model=BrandOut, status_code=201)
+async def create_brand(
+    body: BrandCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    return await product_service.create_brand(db, body)
+
+
+@router.put("/brands/{brand_id}", response_model=BrandOut)
+async def update_brand(
+    brand_id: int,
+    body: BrandUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    return await product_service.update_brand(db, brand_id, body)
+
+
+@router.delete("/brands/{brand_id}", status_code=204)
+async def delete_brand(
+    brand_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    await product_service.delete_brand(db, brand_id)
 
 
 @router.post("/products/{product_id}/upload-image", response_model=ProductOut)

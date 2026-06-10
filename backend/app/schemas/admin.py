@@ -1,6 +1,7 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from decimal import Decimal
 from datetime import datetime
+from typing import Literal
 
 
 class DashboardStats(BaseModel):
@@ -58,6 +59,10 @@ class SalesByCategory(BaseModel):
     category: str
     units_sold: int
     revenue: Decimal
+
+
+class OrderStatusUpdate(BaseModel):
+    status: Literal["shipped", "delivered", "cancelled"]
 
 
 class AnalyticsOut(BaseModel):

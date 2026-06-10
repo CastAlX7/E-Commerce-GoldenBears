@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.dependencies import require_admin
 from app.models.user import User
-from app.schemas.admin import DashboardStats, AnalyticsOut
+from app.schemas.admin import DashboardStats, AnalyticsOut, OrderStatusUpdate
 from app.services import admin_service
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -54,6 +54,16 @@ async def delete_client(
     _: User = Depends(require_admin),
 ):
     await admin_service.delete_client(db, user_id)
+
+
+@router.patch("/orders/{order_id}/status", status_code=204)
+async def update_order_status(
+    order_id: str,
+    body: OrderStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    await admin_service.update_order_status(db, order_id, body.status)
 
 
 @router.get("/analytics", response_model=AnalyticsOut)

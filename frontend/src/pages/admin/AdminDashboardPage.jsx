@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { ShoppingBag, Users, Package, TrendingUp, AlertTriangle, DollarSign } from 'lucide-react'
 import AdminSidebar from '../../components/AdminSidebar'
 import api from '../../api/client'
@@ -46,10 +47,12 @@ export default function AdminDashboardPage() {
             </div>
 
             {stats.low_stock_count > 0 && (
-              <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <AlertTriangle size={16} />
-                <strong>{stats.low_stock_count} producto(s)</strong> con stock bajo (≤10 unidades). Revisa el inventario.
-              </div>
+              <Link to="/admin/inventory?low_stock=true" style={{ textDecoration: 'none' }}>
+                <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <AlertTriangle size={16} />
+                  <strong>{stats.low_stock_count} producto(s)</strong> con stock bajo (≤10 unidades). Haz clic para revisar el inventario.
+                </div>
+              </Link>
             )}
           </>
         )}

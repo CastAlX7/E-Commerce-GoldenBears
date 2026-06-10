@@ -1,4 +1,5 @@
 import math
+import re
 import uuid
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +9,11 @@ from fastapi import HTTPException, status
 
 from app.models.product import Product, Category, Brand
 from app.models.order import OrderItem
-from app.schemas.product import ProductCreate, ProductUpdate
+from app.schemas.product import ProductCreate, ProductUpdate, CategoryCreate, CategoryUpdate, BrandCreate, BrandUpdate
+
+
+def _slugify(name: str) -> str:
+    return re.sub(r'[^a-z0-9]+', '-', name.lower().strip()).strip('-')
 
 _IMAGES_DIR = Path(__file__).parent.parent.parent / "static" / "images"
 
@@ -130,3 +135,82 @@ async def list_brands(db: AsyncSession, category_id: int | None = None) -> list[
         query = query.where(Brand.category_id == category_id)
     result = await db.execute(query)
     return result.scalars().all()
+
+
+async def create_category(db: AsyncSession, data: CategoryCreate) -> Category:
+    slug = _slugify(data.name)
+    existing = (await db.execute(select(Category).where(Category.slug == slug))).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ya existe una categoría con ese nombre")
+    cat = Category(name=data.name, slug=slug)
+    db.add(cat)
+    await db.flush()
+    return cat
+
+
+async def update_category(db: AsyncSession, category_id: int, data: CategoryUpdate) -> Category:
+    result = await db.execute(select(Category).where(Category.id == category_id))
+    cat = result.scalar_one_or_none()
+    if not cat:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Categoría no encontrada")
+    cat.name = data.name
+    cat.slug = _slugify(data.name)
+    await db.flush()
+    return cat
+
+
+async def delete_category(db: AsyncSession, category_id: int) -> None:
+    result = await db.execute(select(Category).where(Category.id == category_id))
+    cat = result.scalar_one_or_none()
+    if not cat:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Categoría no encontrada")
+    prod_count = (await db.execute(
+        select(func.count()).select_from(Product).where(Product.category_id == category_id)
+    )).scalar_one()
+    if prod_count:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"No se puede eliminar: {prod_count} producto(s) usan esta categoría",
+        )
+    await db.delete(cat)
+
+
+async def create_brand(db: AsyncSession, data: BrandCreate) -> Brand:
+    slug = _slugify(data.name)
+    existing = (await db.execute(select(Brand).where(Brand.slug == slug))).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ya existe una marca con ese nombre")
+    brand = Brand(name=data.name, slug=slug, category_id=data.category_id)
+    db.add(brand)
+    await db.flush()
+    return brand
+
+
+async def update_brand(db: AsyncSession, brand_id: int, data: BrandUpdate) -> Brand:
+    result = await db.execute(select(Brand).where(Brand.id == brand_id))
+    brand = result.scalar_one_or_none()
+    if not brand:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Marca no encontrada")
+    if data.name is not None:
+        brand.name = data.name
+        brand.slug = _slugify(data.name)
+    if data.category_id is not None:
+        brand.category_id = data.category_id
+    await db.flush()
+    return brand
+
+
+async def delete_brand(db: AsyncSession, brand_id: int) -> None:
+    result = await db.execute(select(Brand).where(Brand.id == brand_id))
+    brand = result.scalar_one_or_none()
+    if not brand:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Marca no encontrada")
+    prod_count = (await db.execute(
+        select(func.count()).select_from(Product).where(Product.brand_id == brand_id)
+    )).scalar_one()
+    if prod_count:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"No se puede eliminar: {prod_count} producto(s) usan esta marca",
+        )
+    await db.delete(brand)

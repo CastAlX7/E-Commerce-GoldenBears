@@ -18,7 +18,7 @@ class Order(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
-    status: Mapped[str] = mapped_column(SAEnum("pending", "paid", "cancelled", name="order_status"), default="pending", nullable=False)
+    status: Mapped[str] = mapped_column(SAEnum("pending", "paid", "shipped", "delivered", "cancelled", name="order_status"), default="pending", nullable=False)
     receipt_type: Mapped[str] = mapped_column(SAEnum("boleta", "factura", name="receipt_type"), nullable=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     shipping_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)

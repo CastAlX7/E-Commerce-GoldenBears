@@ -122,6 +122,31 @@ async def delete_client(db: AsyncSession, user_id: str) -> None:
     await db.delete(user)
 
 
+_VALID_TRANSITIONS: dict[str, list[str]] = {
+    "pending": ["cancelled"],
+    "paid": ["shipped", "cancelled"],
+    "shipped": ["delivered"],
+    "delivered": [],
+    "cancelled": [],
+}
+
+
+async def update_order_status(db: AsyncSession, order_id: str, new_status: str) -> None:
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
+
+    allowed = _VALID_TRANSITIONS.get(order.status, [])
+    if new_status not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"No se puede cambiar de '{order.status}' a '{new_status}'",
+        )
+
+    order.status = new_status
+
+
 async def get_analytics(db: AsyncSession) -> AnalyticsOut:
     total_revenue = (await db.execute(
         select(func.coalesce(func.sum(Order.total), 0)).where(Order.status == "paid")

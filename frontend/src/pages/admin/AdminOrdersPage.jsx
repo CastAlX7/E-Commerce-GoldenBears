@@ -3,22 +3,47 @@ import AdminSidebar from '../../components/AdminSidebar'
 import api from '../../api/client'
 
 const STATUS_COLORS = {
-  paid: { bg: '#d1fae5', color: '#065f46', label: 'Pagado' },
-  pending: { bg: '#fef3c7', color: '#92400e', label: 'Pendiente' },
+  paid:      { bg: '#d1fae5', color: '#065f46', label: 'Pagado' },
+  pending:   { bg: '#fef3c7', color: '#92400e', label: 'Pendiente' },
+  shipped:   { bg: '#dbeafe', color: '#1e40af', label: 'Enviado' },
+  delivered: { bg: '#ede9fe', color: '#5b21b6', label: 'Entregado' },
   cancelled: { bg: '#f3f4f6', color: '#6b7280', label: 'Cancelado' },
+}
+
+const NEXT_STATUSES = {
+  pending:   ['cancelled'],
+  paid:      ['shipped', 'cancelled'],
+  shipped:   ['delivered'],
+  delivered: [],
+  cancelled: [],
 }
 
 export default function AdminOrdersPage() {
   const [data, setData] = useState({ items: [], total: 0, page: 1, pages: 1 })
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  const [updating, setUpdating] = useState(null)
 
-  useEffect(() => {
+  const fetchOrders = () => {
     setLoading(true)
     api.get('/admin/orders', { params: { page, size: 20 } })
       .then(r => setData(r.data))
       .finally(() => setLoading(false))
-  }, [page])
+  }
+
+  useEffect(() => { fetchOrders() }, [page])
+
+  const handleStatusChange = async (orderId, newStatus) => {
+    setUpdating(orderId)
+    try {
+      await api.patch(`/admin/orders/${orderId}/status`, { status: newStatus })
+      fetchOrders()
+    } catch (e) {
+      alert(e.response?.data?.detail || 'Error al actualizar estado')
+    } finally {
+      setUpdating(null)
+    }
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: 'calc(100vh - 64px)' }}>
@@ -41,7 +66,7 @@ export default function AdminOrdersPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['ID / Tracking', 'Cliente', 'Ciudad', 'Comprobante', 'Estado', 'Total', 'Fecha'].map(h => (
+                  {['ID / Tracking', 'Cliente', 'Ciudad', 'Comprobante', 'Estado', 'Actualizar', 'Total', 'Fecha'].map(h => (
                     <th key={h} style={{ padding: '0.65rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
                       {h}
                     </th>
@@ -51,6 +76,8 @@ export default function AdminOrdersPage() {
               <tbody>
                 {data.items.map(order => {
                   const s = STATUS_COLORS[order.status] || STATUS_COLORS.pending
+                  const next = NEXT_STATUSES[order.status] || []
+                  const isUpdating = updating === order.id
                   return (
                     <tr key={order.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.75rem 1rem' }}>
@@ -64,6 +91,23 @@ export default function AdminOrdersPage() {
                         <span style={{ padding: '3px 8px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, background: s.bg, color: s.color }}>
                           {s.label}
                         </span>
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem' }}>
+                        {next.length > 0 ? (
+                          <select
+                            disabled={isUpdating}
+                            defaultValue=""
+                            onChange={e => { if (e.target.value) handleStatusChange(order.id, e.target.value) }}
+                            style={{ fontSize: '0.78rem', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--border)', cursor: 'pointer', opacity: isUpdating ? 0.5 : 1 }}
+                          >
+                            <option value="" disabled>Cambiar…</option>
+                            {next.map(ns => (
+                              <option key={ns} value={ns}>{STATUS_COLORS[ns]?.label || ns}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>—</span>
+                        )}
                       </td>
                       <td style={{ padding: '0.75rem 1rem', fontWeight: 700, fontSize: '0.9rem' }}>
                         S/ {parseFloat(order.total).toFixed(2)}

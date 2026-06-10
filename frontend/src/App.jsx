@@ -17,6 +17,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminOrdersPage from './pages/admin/AdminOrdersPage'
 import AdminClientsPage from './pages/admin/AdminClientsPage'
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage'
+import AdminCategoriesPage from './pages/admin/AdminCategoriesPage'
 import AccountPage from './pages/AccountPage'
 
 export default function App() {
@@ -57,6 +58,9 @@ export default function App() {
             } />
             <Route path="/admin/analytics" element={
               <ProtectedRoute adminOnly><AdminAnalyticsPage /></ProtectedRoute>
+            } />
+            <Route path="/admin/categories" element={
+              <ProtectedRoute adminOnly><AdminCategoriesPage /></ProtectedRoute>
             } />
           </Routes>
         </CartProvider>
