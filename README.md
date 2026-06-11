@@ -200,3 +200,39 @@ golden-bears/
 |---|---|
 | `customer` | Comprar, ver sus pedidos, gestionar su carrito |
 | `admin` | Todo lo anterior + gestión de productos y panel admin |
+
+---
+## Docker
+## 1. Clonar Repositorio
+
+```bash
+git clone https://github.com/CastAlX7/E-Commerce-GoldenBears.git
+cd E-Commerce-GoldenBears
+git checkout feature/docker-setup
+```
+
+## 2. Crear el archivo de variables de entorno(copiar contenido .env.exmaple a .env)
+PowerShell
+```bash
+copy backend\.env.example backend\.env
+```
+MAC/LINUX/BASH
+```bash
+cp backend/.env.example backend/.env
+```
+
+## 3. Levanta los Contenedores
+```bash
+docker compose up --build -d
+```
+
+## 4. Carga de datos de prueba
+```bash
+docker compose exec backend python seed.py
+```
+## 5. Abrir en el browser
+http://localhost
+
+```bash
+docker compose down
+```
