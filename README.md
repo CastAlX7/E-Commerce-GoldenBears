@@ -1,202 +1,99 @@
-# Golden Bears E-Commerce
+# Marketplace Golden Bears
 
-Plataforma de e-commerce full-stack con panel de administración.
+Marketplace Golden Bears es una plataforma de comercio electrónico que opera bajo el modelo de marketplace con fulfillment centralizado, permitiendo a los usuarios explorar y adquirir productos de múltiples marcas aliadas en un solo entorno digital. El sistema atiende tanto a usuarios no autenticados como a clientes registrados, con alcance a nivel nacional incluyendo provincias.
 
-## Tecnologías
+Actualmente se encuentra en una etapa inicial de crecimiento, gestionando entre 5,000 y 7,000 visitas mensuales con picos de actividad entre las 16:00 y 20:00 horas. Frente a limitaciones de escalabilidad en la infraestructura tradicional, se propone la migración a una solución en la nube diseñada para garantizar alta disponibilidad, resiliencia y capacidad de respuesta ante eventos de alta concurrencia como campañas tipo Black Friday.
 
-**Backend**
-- Python + FastAPI
-- SQLAlchemy (async) + PostgreSQL
-- Alembic (migraciones)
-- JWT (autenticación)
+## Descripcion General
 
-**Frontend**
-- React 18 + Vite
-- React Router v6
-- Axios
+La plataforma permite a usuarios registrados y no registrados explorar productos de múltiples marcas aliadas. Entre sus capacidades principales:
 
----
+- Navegación de catálogo sin autenticación
+- Registro, autenticación y gestión de cuenta de cliente
+- Carrito de compras y proceso de checkout con múltiples métodos de pago
+- Gestión de órdenes y comprobantes
+- Panel de administración para gestión de productos, marcas, categorías y usuarios
 
-## Requisitos previos
+## Arquitectura
 
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL corriendo en `localhost:5432`
+![Diagrama de Infraestructura](diagrams/Diagrama-15-06-26.jpeg)
 
----
+La plataforma implementa una arquitectura de monolito modular desplegada en AWS, diseñada para soportar picos de tráfico de hasta 10,000 visitas durante campañas de alta demanda.
 
-## Instalación
+### Componentes por Capa
 
-### 1. Clonar el repositorio y entrar a la carpeta
+**Distribución y Seguridad**
+- Route 53 para resolución DNS
+- CloudFront como CDN y punto de entrada
+- WAF para protección contra ataques y rate limiting
+- S3 para hosting del frontend estático
+
+**API y Balanceo**
+- API Gateway con VPC Link V2
+- Application Load Balancer (ALB)
+
+**Cómputo**
+- ECS Fargate con Auto Scaling (Monolito Modular) en dos zonas de disponibilidad
+- Lambda para procesamiento de comprobantes y validaciones
+
+**Base de Datos**
+- Aurora PostgreSQL Principal + Standby (Multi-AZ)
+- Amazon RDS Proxy
+- ElastiCache Redis para caché
+
+**Mensajería**
+- SNS + SQS + Dead Letter Queue para procesamiento asíncrono de órdenes y comprobantes
+
+**Seguridad y Configuración**
+- Secrets Manager para gestión de credenciales
+- IAM para control de acceso
+
+## Requisitos Previos
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y corriendo
+- [Git](https://git-scm.com/)
+
+## Levantar el proyecto localmente
+
+### 1. Clonar el repositorio
 
 ```bash
-cd golden-bears
+git clone https://github.com/CastAlX7/E-Commerce-GoldenBears.git
+cd E-Commerce-GoldenBears
+git checkout develop
 ```
 
-### 2. Crear la base de datos en PostgreSQL
-
-```sql
-CREATE DATABASE golden_bears;
-```
-
-### 3. Crear el entorno virtual e instalar dependencias del backend
-
-```bash
-python -m venv venv
-venv\Scripts\activate
-python -m pip install -r backend\requirements.txt
-```
-
-### 4. Configurar variables de entorno
-
-Copiar el archivo de ejemplo y editar con tus credenciales:
+### 2. Configurar variables de entorno
+**Windows:**
 
 ```bash
 copy backend\.env.example backend\.env
 ```
 
-Contenido del `.env`:
-
-```
-DATABASE_URL=postgresql+asyncpg://postgres:1234@localhost:5432/golden_bears
-SECRET_KEY=BRE@ososdelmileniodorado123
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-REFRESH_TOKEN_EXPIRE_DAYS=7
-```
-
-### 5. Instalar dependencias del frontend
+**Mac/Linux:**
 
 ```bash
-cd frontend
-npm install
-cd ..
+cp backend/.env.example backend/.env
 ```
 
----
-
-## Ejecución
-
-Abrir **dos terminales** desde la raíz del proyecto:
-
-**Terminal 1 — Backend:**
+### 3. Levantar los contenedores
 
 ```bash
-venv\Scripts\activate
-cd backend
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+docker compose up --build -d
 ```
+> La primera vez tarda ~2-3 minutos descargando imágenes y construyendo los contenedores.
 
-**Terminal 2 — Frontend:**
+### 4. Cargar datos de prueba
 
 ```bash
-cd frontend
-npm run dev
+docker compose exec backend python seed.py
 ```
 
-### Cargar datos de prueba (opcional)
+### 5. Abrir en el navegador
 
-Con el backend ya corriendo, en una tercera terminal:
+http://localhost
 
-```bash
-venv\Scripts\activate
-cd backend
-python seed.py
-```
-
-Esto crea un usuario administrador y productos de ejemplo:
-- **Admin:** `admin@goldenbears.com` / `Admin1234!`
-
----
-
-## URLs
-
-| Servicio | URL |
+| Acción | Comando |
 |---|---|
-| Frontend | http://localhost:5173 |
-| API | http://localhost:8000 |
-| Documentación Swagger | http://localhost:8000/docs |
-
----
-
-## Estructura del proyecto
-
-```
-golden-bears/
-├── backend/
-│   ├── app/
-│   │   ├── models/        # Modelos SQLAlchemy
-│   │   ├── routers/       # Endpoints FastAPI
-│   │   ├── schemas/       # Schemas Pydantic
-│   │   ├── services/      # Lógica de negocio
-│   │   ├── config.py      # Variables de entorno
-│   │   ├── database.py    # Conexión a la base de datos
-│   │   ├── dependencies.py# Autenticación y permisos
-│   │   └── main.py        # Entrada de la aplicación
-│   ├── alembic/           # Migraciones
-│   ├── requirements.txt
-│   └── seed.py
-├── frontend/
-│   ├── src/
-│   │   ├── api/           # Cliente HTTP (axios)
-│   │   ├── components/    # Componentes reutilizables
-│   │   ├── contexts/      # Auth y Cart context
-│   │   └── pages/         # Páginas de la app
-│   └── package.json
-├── venv/                  # Entorno virtual Python
-├── .gitignore
-└── README.md
-```
-
----
-
-## Endpoints principales
-
-### Autenticación
-| Método | Ruta | Descripción |
-|---|---|---|
-| POST | `/api/auth/register` | Registrar usuario |
-| POST | `/api/auth/login` | Iniciar sesión |
-| POST | `/api/auth/refresh` | Renovar token |
-
-### Productos
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/api/products` | Listar productos |
-| GET | `/api/products/{id}` | Detalle de producto |
-| POST | `/api/products` | Crear producto (admin) |
-| PUT | `/api/products/{id}` | Editar producto (admin) |
-| DELETE | `/api/products/{id}` | Eliminar producto (admin) |
-
-### Carrito
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/api/cart` | Ver carrito |
-| POST | `/api/cart` | Agregar producto |
-| PUT | `/api/cart/{id}` | Actualizar cantidad |
-| DELETE | `/api/cart/{id}` | Eliminar item |
-
-### Pedidos
-| Método | Ruta | Descripción |
-|---|---|---|
-| POST | `/api/orders/checkout/initiate` | Reservar stock (15 min) |
-| POST | `/api/orders/checkout/confirm` | Confirmar compra |
-| GET | `/api/orders` | Mis pedidos |
-| GET | `/api/orders/{id}` | Detalle de pedido |
-
-### Admin
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/api/admin/dashboard` | Estadísticas generales |
-| GET | `/api/admin/orders` | Todos los pedidos |
-| GET | `/api/admin/clients` | Todos los clientes |
-| GET | `/api/admin/analytics` | Analítica de ventas |
-
----
-
-## Roles de usuario
-
-| Rol | Permisos |
-|---|---|
-| `customer` | Comprar, ver sus pedidos, gestionar su carrito |
-| `admin` | Todo lo anterior + gestión de productos y panel admin |
+| Detener contenedores | `docker compose down` |
+| Reset completo (borra todos los datos) | `docker compose down -v` |
