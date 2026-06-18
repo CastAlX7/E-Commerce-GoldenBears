@@ -47,3 +47,20 @@ backend/static/images/*
 # Docker
 .env.docker
 docker-compose.override.yml
+
+#infraestructura
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+*.tfvars
+*.tfvars.json
+*.tfplan
+
+# credenciales
+.aws/
+credentials
+config
+
+*.pem
+*.key
