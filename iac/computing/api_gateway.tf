@@ -34,3 +34,11 @@ resource "aws_apigatewayv2_route" "apigw_route" {
   target = "integrations/${aws_apigatewayv2_integration.apigw_integration.id}"
   depends_on = [aws_apigatewayv2_integration.apigw_integration]
 }
+
+# Set Default stage
+resource "aws_apigatewayv2_stage" "apigw_stage" {
+  api_id    = aws_apigatewayv2_api.apigw_http_endpoint.id
+  name = "$default"
+  auto_deploy = true
+  depends_on = [aws_apigatewayv2_api.apigw_http_endpoint]
+}
