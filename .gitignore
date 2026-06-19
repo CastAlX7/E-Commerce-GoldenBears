@@ -47,3 +47,35 @@ backend/static/images/*
 # Docker
 .env.docker
 docker-compose.override.yml
+
+#infraestructura
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+*.tfvars
+*.tfvars.json
+*.tfplan
+
+# credenciales
+.aws/
+credentials
+config
+
+*.pem
+*.key
+
+# Terraform — archivos generados localmente
+*.zip
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CI/CD — artefactos de GitHub Actions
+tfplan
+
+# Tests
+results.xml
