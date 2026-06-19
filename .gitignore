@@ -1,32 +1,65 @@
-# Python
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
 venv/
 .venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
 
-# Entorno
-backend/.env
-*.env
-
-# Alembic
-backend/alembic/versions/*.pyc
-
-# Node
+# --- Node ---
 frontend/node_modules/
 frontend/dist/
 frontend/.cache/
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.npm
 
-# IDEs
+# --- Entorno y Credenciales ---
+.env
+*.env
+.env.docker
+.aws/
+credentials
+
+# --- Alembic ---
+backend/alembic/versions/*.pyc
+
+# --- Docker ---
+docker-compose.override.yml
+
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfstate.lock.info
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# --- IDEs y Editores ---
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace
 
-# OS
+# --- OS y Varios ---
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
+dist/
+build/
+*.zip
+results.xml/
 
-# Imágenes subidas por el admin (solo las del seed se versionan)
+# --- Imágenes (Seed) ---
 backend/static/images/*
 !backend/static/images/c9c10297-463b-4f6a-a144-9b523dadd969.png
 !backend/static/images/44012204-0874-44de-bd3e-c9e30805c51a.jpg
@@ -43,26 +76,3 @@ backend/static/images/*
 !backend/static/images/405d976c-7d8c-4d78-bd3f-d3e2977b32c5.jpg
 !backend/static/images/8c1842f0-72d1-41ad-bebe-b5076cd96bc6.png
 !backend/static/images/719ebe33-2191-40ff-86ee-ecce1f857e9e.jpg
-
-# Docker
-.env.docker
-docker-compose.override.yml
-
-# Terraform
-.terraform/
-*.tfstate
-*.tfstate.*
-*.tfvars
-*.tfvars.json
-*.tfplan
-
-crash.log
-crash.*.log
-
-# Terraform override files
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-
-results.xml/
