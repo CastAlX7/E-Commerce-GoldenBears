@@ -5,3 +5,21 @@ resource "aws_lb" "ecs_alb" {
   security_groups    = [var.alb_sg_id]
   subnets            = var.private_subnets
 }
+
+# Creacion de ALB target groups ECS
+resource "aws_lb_target_group" "alb_ecs_tg" {
+  port        = 8080
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = var.vpc_id
+
+  health_check { 
+    path                = "/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    timeout             = 5
+    interval            = 30
+  }
+}
