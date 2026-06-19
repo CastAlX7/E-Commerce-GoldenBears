@@ -35,3 +35,26 @@ resource "aws_ecs_service" "demo-ecs-service" {
         assign_public_ip = false
     }
 }
+
+resource "aws_ecs_task_definition" "ecs_taskdef" {
+  family = "service"
+  container_definitions = jsonencode([
+    {
+      name      = "web"
+      image     = "nginx:latest" 
+      essential = true
+      portMappings = [
+        {
+          containerPort = 8080
+          hostPort      = 8080
+        }
+      ]
+    }
+  ])
+  cpu                      = 512
+  memory                   = 1024
+  execution_role_arn       = aws_iam_role.ecs_task_exec_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+}
