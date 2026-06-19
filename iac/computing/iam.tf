@@ -19,3 +19,9 @@ resource "aws_iam_role" "ecs_task_exec_role" {
     Name = "${var.project_name}-ecs-task-exec-role"
   }
 }
+
+# Adjuntar política de ejecución de tareas ECS
+resource "aws_iam_role_policy_attachment" "ecs_task_exec_role_policy" {
+  role       = aws_iam_role.ecs_task_exec_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
