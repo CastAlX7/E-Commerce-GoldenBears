@@ -14,10 +14,10 @@ npm-debug.log*
 yarn-error.log*
 .npm
 
-# --- Entorno y Credenciales (Seguridad) ---
+# --- Entorno y Credenciales ---
 .env
-.env.*
-!/backend/.env  # Si necesitas ignorar otros pero mantener este específicamente
+*.env
+.env.docker
 .aws/
 credentials
 
