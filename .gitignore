@@ -52,7 +52,6 @@ docker-compose.override.yml
 .terraform/
 *.tfstate
 *.tfstate.*
-.terraform.lock.hcl
 *.tfvars
 *.tfvars.json
 *.tfplan
