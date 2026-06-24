@@ -12,3 +12,8 @@ variable "private_db_subnet_ids" {
   type        = list(string)
   description = "Lista de IDs de las subredes aisladas destinadas para el clúster de Aurora"
 }
+
+variable "private_app_subnet_ids" {
+  type        = list(string)
+  description = "Lista de IDs de las subredes privadas de aplicación (Para ElastiCache)"
+}
