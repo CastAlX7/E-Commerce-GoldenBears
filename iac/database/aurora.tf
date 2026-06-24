@@ -26,3 +26,12 @@ resource "aws_rds_cluster" "aurora" {
     max_capacity = 4.0
   }
 }
+
+resource "aws_rds_cluster_instance" "aurora_instances" {
+  count              = 2
+  identifier         = "${var.project_name}-aurora-node-${count.index}"
+  cluster_identifier = aws_rds_cluster.aurora.id
+  instance_class     = "db.serverless"
+  engine             = aws_rds_cluster.aurora.engine
+  engine_version     = aws_rds_cluster.aurora.engine_version
+}
