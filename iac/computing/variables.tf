@@ -32,3 +32,13 @@ variable "vpc_link_sg_id" {
   type        = string
   description = "ID del Security Group para VPC Link"
 }
+
+variable "app_db_secret_arn" {
+  type        = string
+  description = "ARN del secreto de credenciales de base de datos"
+}
+
+variable "secrets_kms_key_arn" {
+  type        = string
+  description = "ARN de la llave KMS para descifrar secretos"
+}

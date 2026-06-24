@@ -78,7 +78,14 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = "*"
+        Resource = var.app_db_secret_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt"
+        ]
+        Resource = var.secrets_kms_key_arn
       }
     ]
   })
