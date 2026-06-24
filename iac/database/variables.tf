@@ -32,3 +32,9 @@ variable "elasticache_sg_id" {
   type        = string
   description = "ID del Security Group para el clúster de Redis"
 }
+
+variable "redis_auth_token" {
+  type        = string
+  sensitive   = true
+  description = "Token de autenticación (password) para el clúster de Redis, se mapea al comando AUTH"
+}
