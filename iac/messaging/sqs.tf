@@ -1,12 +1,12 @@
 # Comprobantes
 
 resource "aws_sqs_queue" "billing_dlq" {
-  name = "golden-bears-billing-dlq"
+  name = "${var.project_name}-billing-dlq"
   sqs_managed_sse_enabled = true
 }
 
 resource "aws_sqs_queue" "billing_queue" {
-  name = "golden-bears-billing-queue"
+  name = "${var.project_name}-billing-queue"
   visibility_timeout_seconds = 180 
   sqs_managed_sse_enabled    = true
 }
@@ -57,12 +57,12 @@ resource "aws_sqs_queue_policy" "billing_queue_policy" {
 # Inventario
 
 resource "aws_sqs_queue" "inventory_dlq" {
-  name = "golden-bears-inventory-dlq"
+  name = "${var.project_name}-inventory-dlq"
   sqs_managed_sse_enabled = true
 }
 
 resource "aws_sqs_queue" "inventory_queue" {
-  name = "golden-bears-inventory-queue"
+  name = "${var.project_name}-inventory-queue"
   visibility_timeout_seconds = 180 
   sqs_managed_sse_enabled    = true
 }
