@@ -30,3 +30,8 @@ resource "aws_iam_policy" "rds_proxy_policy" {
     ]
   })
 }
+
+resource "aws_iam_role_policy_attachment" "rds_proxy_attach" {
+  role       = aws_iam_role.rds_proxy_role.name
+  policy_arn = aws_iam_policy.rds_proxy_policy.arn
+}
