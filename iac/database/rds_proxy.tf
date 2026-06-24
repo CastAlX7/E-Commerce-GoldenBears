@@ -12,3 +12,16 @@ resource "aws_db_proxy" "aurora_proxy" {
     secret_arn  = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
   }
 }
+
+resource "aws_db_proxy_default_target_group" "aurora_proxy" {
+  db_proxy_name = aws_db_proxy.aurora_proxy.name
+
+  connection_pool_config {
+    max_connections_percent = 80
+    max_idle_connections_percent = 50
+  }
+
+  lifecycle {
+    replace_triggered_by = [aws_db_proxy.aurora_proxy.id]
+  }
+}
