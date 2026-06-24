@@ -11,3 +11,22 @@ resource "aws_iam_role" "rds_proxy_role" {
     }]
   })
 }
+
+# La política lee dinámicamente el ARN del secreto que Aurora generará.
+# Nota: No requiere kms:Decrypt porque usamos la llave administrada de AWS.
+resource "aws_iam_policy" "rds_proxy_policy" {
+  name        = "${var.project_name}-${var.environment}-rds-proxy-policy"
+  description = "Permite al RDS Proxy acceder a la credencial autogenerada de Aurora"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "ReadDBCredentials"
+        Effect   = "Allow"
+        Action   = "secretsmanager:GetSecretValue"
+        Resource = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
+      }
+    ]
+  })
+}
