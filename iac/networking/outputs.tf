@@ -62,3 +62,8 @@ output "private_db_subnet_ids" {
   description = "IDs de las subredes privadas de base de datos"
   value       = [aws_subnet.private_db_a.id, aws_subnet.private_db_b.id]
 }
+
+output "private_lambda_subnet_id" {
+  description = "ID de la subred privada aislada para Lambda de Inventario"
+  value       = aws_subnet.private_lambda_a.id
+}
