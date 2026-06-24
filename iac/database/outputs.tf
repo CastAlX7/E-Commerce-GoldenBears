@@ -27,3 +27,8 @@ output "redis_primary_endpoint" {
   value       = aws_elasticache_replication_group.redis.primary_endpoint_address
   description = "Endpoint de lectura y escritura del nodo primario de Redis para la gestión de sesiones e inventario."
 }
+
+output "redis_reader_endpoint" {
+  value       = aws_elasticache_replication_group.redis.reader_endpoint_address
+  description = "Endpoint de solo lectura del nodo réplica de Redis."
+}
