@@ -21,3 +21,15 @@ variable "vpc_cidr" {
   description = "Bloque CIDR principal para la VPC"
   default     = "10.0.0.0/16"
 }
+
+variable "redis_auth_token" {
+  type        = string
+  sensitive   = true
+  description = "Token de autenticación para el clúster de Redis"
+}
+
+variable "domain_name" {
+  type        = string
+  description = "Dominio principal del proyecto"
+  default     = "goldenbears.com"
+}
