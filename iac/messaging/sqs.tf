@@ -67,7 +67,7 @@ resource "aws_sqs_queue" "inventory_queue" {
   sqs_managed_sse_enabled    = true
 }
 
-resource "aws_sqs_queue_redrive_policy" "inventary_redrive" {
+resource "aws_sqs_queue_redrive_policy" "inventory_redrive" {
   queue_url = aws_sqs_queue.inventory_queue.id
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.inventory_dlq.arn

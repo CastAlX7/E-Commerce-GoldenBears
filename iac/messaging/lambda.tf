@@ -1,18 +1,17 @@
-
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 # ---------------------------------------------------------------------------
-# Log Groups — CloudWatch Logs para trazabilidad de texto (temporal hasta definir herramienta de monitoreo)
+# Log Groups — CloudWatch Logs
 # ---------------------------------------------------------------------------
 
 resource "aws_cloudwatch_log_group" "lambda_inventory_logs" {
-  name              = "/aws/lambda/golden-bears-inventory"
+  name              = "/aws/lambda/${var.project_name}-inventory"
   retention_in_days = 30
 }
 
 resource "aws_cloudwatch_log_group" "lambda_billing_logs" {
-  name              = "/aws/lambda/golden-bears-billing"
+  name              = "/aws/lambda/${var.project_name}-billing"
   retention_in_days = 365
 }
 
@@ -22,7 +21,7 @@ resource "aws_cloudwatch_log_group" "lambda_billing_logs" {
 
 resource "aws_lambda_function" "lambda_inventario" {
   filename      = "${path.module}/placeholder.zip"
-  function_name = "golden-bears-inventory"
+  function_name = "${var.project_name}-inventory"
   role          = aws_iam_role.rol_lambda_inventario.arn
   runtime       = "python3.12"
   handler       = "handler.lambda_handler"
@@ -53,7 +52,7 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda_inventory" {
 }
 
 resource "aws_iam_role" "rol_lambda_inventario" {
-  name = "golden-bears-lambda-inventory-role"
+  name = "${var.project_name}-lambda-inventory-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -66,7 +65,7 @@ resource "aws_iam_role" "rol_lambda_inventario" {
 }
 
 resource "aws_iam_role_policy" "permisos_lambda_inventario" {
-  name = "golden-bears-lambda-inventory-permissions"
+  name = "${var.project_name}-lambda-inventory-permissions"
   role = aws_iam_role.rol_lambda_inventario.id
 
   policy = jsonencode({
@@ -107,7 +106,7 @@ resource "aws_iam_role_policy" "permisos_lambda_inventario" {
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/golden-bears-inventory*"
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-inventory*"
       }
     ]
   })
@@ -119,7 +118,7 @@ resource "aws_iam_role_policy" "permisos_lambda_inventario" {
 
 resource "aws_lambda_function" "lambda_comprobantes" {
   filename      = "${path.module}/placeholder.zip"
-  function_name = "golden-bears-billing"
+  function_name = "${var.project_name}-billing"
   role          = aws_iam_role.rol_lambda_comprobantes.arn
   runtime       = "python3.12"
   handler       = "handler.lambda_handler"
@@ -145,7 +144,7 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda_billing" {
 }
 
 resource "aws_iam_role" "rol_lambda_comprobantes" {
-  name = "golden-bears-lambda-billing-role"
+  name = "${var.project_name}-lambda-billing-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -158,7 +157,7 @@ resource "aws_iam_role" "rol_lambda_comprobantes" {
 }
 
 resource "aws_iam_role_policy" "permisos_lambda_comprobantes" {
-  name = "golden-bears-lambda-billing-permissions"
+  name = "${var.project_name}-lambda-billing-permissions"
   role = aws_iam_role.rol_lambda_comprobantes.id
 
   policy = jsonencode({
@@ -189,7 +188,7 @@ resource "aws_iam_role_policy" "permisos_lambda_comprobantes" {
         Sid      = "ReadNubefactCredentials"
         Effect   = "Allow"
         Action   = "secretsmanager:GetSecretValue"
-        Resource = "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:golden-bears/billing/nubefact*"
+        Resource = var.nubefact_secret_arn
       },
       {
         Sid    = "CloudWatchLogs"
@@ -199,7 +198,7 @@ resource "aws_iam_role_policy" "permisos_lambda_comprobantes" {
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/golden-bears-billing*"
+        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-billing*"
       }
     ]
   })

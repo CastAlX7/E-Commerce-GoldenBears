@@ -4,7 +4,7 @@ resource "aws_s3_bucket" "documental" {
   tags = {
     Name        = "Bucket Documental Fiscal"
     Environment = "Dev"
-    Compliance = SUNAT
+    Compliance = "SUNAT"
   }
 }
 
