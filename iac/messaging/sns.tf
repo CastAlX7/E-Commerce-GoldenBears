@@ -1,6 +1,6 @@
 # Publicador Central
 resource "aws_sns_topic" "orders_topic" {
-  name = "golden-bears-orders-topic"
+  name = "${var.project_name}-orders-topic"
 
   # reemplazar por una CMK propia cuando unifiquen módulos
   kms_master_key_id = "alias/aws/sns"
