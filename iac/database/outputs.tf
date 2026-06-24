@@ -22,3 +22,8 @@ output "aurora_master_user_secret_arn" {
   value       = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
   description = "ARN del secreto generado automáticamente en AWS Secrets Manager que almacena las credenciales master."
 }
+
+output "redis_primary_endpoint" {
+  value       = aws_elasticache_replication_group.redis.primary_endpoint_address
+  description = "Endpoint de lectura y escritura del nodo primario de Redis para la gestión de sesiones e inventario."
+}
