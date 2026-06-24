@@ -22,3 +22,8 @@ variable "aurora_sg_id" {
   type        = string
   description = "ID del Security Group exclusivo para la base de datos Aurora"
 }
+
+variable "rds_proxy_sg_id" {
+  type        = string
+  description = "ID del Security Group para el proxy de la base de datos"
+}
