@@ -25,3 +25,13 @@ resource "aws_db_proxy_default_target_group" "aurora_proxy" {
     replace_triggered_by = [aws_db_proxy.aurora_proxy.id]
   }
 }
+
+resource "aws_db_proxy_target" "aurora_proxy" {
+  db_proxy_name         = aws_db_proxy.aurora_proxy.name
+  target_group_name     = aws_db_proxy_default_target_group.aurora_proxy.name
+  db_cluster_identifier = aws_rds_cluster.aurora.cluster_identifier
+
+  lifecycle {
+    replace_triggered_by = [aws_db_proxy.aurora_proxy.id]
+  }
+}
