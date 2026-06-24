@@ -17,3 +17,8 @@ variable "private_app_subnet_ids" {
   type        = list(string)
   description = "Lista de IDs de las subredes privadas de aplicación (Para ElastiCache)"
 }
+
+variable "aurora_sg_id" {
+  type        = string
+  description = "ID del Security Group exclusivo para la base de datos Aurora"
+}
