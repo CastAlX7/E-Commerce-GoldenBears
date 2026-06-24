@@ -17,3 +17,8 @@ output "aurora_cluster_endpoint" {
   value       = aws_rds_cluster.aurora.endpoint
   description = "Endpoint directo del clúster de Aurora (Escritura) solo para migraciones de datos o scripts de emergencia."
 }
+
+output "aurora_master_user_secret_arn" {
+  value       = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
+  description = "ARN del secreto generado automáticamente en AWS Secrets Manager que almacena las credenciales master."
+}
