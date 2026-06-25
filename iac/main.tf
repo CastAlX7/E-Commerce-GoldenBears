@@ -54,3 +54,5 @@ module "presentacion" {
   bucket_name = "${var.project_name}-frontend-app-bucket"
   domain_name = var.domain_name
 }
+
+alb_logs_bucket = module.messaging.documental_bucket_name
