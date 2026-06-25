@@ -14,3 +14,10 @@ resource "aws_s3_bucket_versioning" "frontend_versioning" {
   bucket = aws_s3_bucket.frontend.id
   versioning_configuration { status = "Enabled" }
 }
+
+# Access Logging 
+resource "aws_s3_bucket_logging" "frontend_logging" {
+  bucket        = aws_s3_bucket.frontend.id
+  target_bucket = var.log_bucket_name
+  target_prefix = "log/"
+}

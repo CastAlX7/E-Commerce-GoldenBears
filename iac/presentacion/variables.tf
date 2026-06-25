@@ -7,3 +7,8 @@ variable "domain_name" {
   type        = string
   description = "Dominio principal del proyecto"
 }
+
+variable "log_bucket_name" {
+  type        = string
+  description = "Nombre del bucket destinado a guardar logs de acceso"
+}
