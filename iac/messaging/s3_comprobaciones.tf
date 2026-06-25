@@ -52,14 +52,23 @@ resource "aws_s3_bucket_lifecycle_configuration" "lifecycle_comprobantes" {
       prefix = "facturas/"
     }
 
-    # Mueve a Glacier a los 90 días para reducir costos de almacenamiento
     transition {
       days          = 90
       storage_class = "GLACIER"
     }
+  }
 
-    # Sin bloque expiration — SUNAT exige retención mínima 5 años.
-    # Los objetos NO se eliminan automáticamente.
+  rule {
+    id     = "abort-incomplete-uploads"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
   }
 }
 
