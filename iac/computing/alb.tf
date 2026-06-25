@@ -5,6 +5,7 @@ resource "aws_lb" "ecs_alb" {
   security_groups    = [var.alb_sg_id]
   subnets            = var.private_subnets
   drop_invalid_header_fields = true
+  enable_deletion_protection = true
 }
 
 # Creacion de ALB target groups ECS
