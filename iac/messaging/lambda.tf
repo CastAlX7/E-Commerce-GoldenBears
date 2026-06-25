@@ -7,7 +7,7 @@ data "aws_region" "current" {}
 
 resource "aws_cloudwatch_log_group" "lambda_inventory_logs" {
   name              = "/aws/lambda/${var.project_name}-inventory"
-  retention_in_days = 30
+  retention_in_days = 365
 }
 
 resource "aws_cloudwatch_log_group" "lambda_billing_logs" {
