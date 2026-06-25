@@ -43,6 +43,8 @@ resource "aws_ecs_task_definition" "ecs_taskdef" {
       name      = "web"
       image     = "nginx:latest" 
       essential = true
+      readonlyRootFilesystem = true
+
       portMappings = [
         {
           containerPort = 8080
