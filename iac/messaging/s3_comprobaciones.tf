@@ -22,8 +22,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "encriptacion_comp
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256" 
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = var.s3_kms_key_arn
     }
+    bucket_key_enabled = true
   }
 }
 
@@ -52,14 +54,23 @@ resource "aws_s3_bucket_lifecycle_configuration" "lifecycle_comprobantes" {
       prefix = "facturas/"
     }
 
-    # Mueve a Glacier a los 90 días para reducir costos de almacenamiento
     transition {
       days          = 90
       storage_class = "GLACIER"
     }
+  }
 
-    # Sin bloque expiration — SUNAT exige retención mínima 5 años.
-    # Los objetos NO se eliminan automáticamente.
+  rule {
+    id     = "abort-incomplete-uploads"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
   }
 }
 
