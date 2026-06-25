@@ -47,3 +47,13 @@ variable "alb_logs_bucket" {
   type        = string
   description = "Nombre del bucket S3 para access logs del ALB"
 }
+
+variable "sns_orders_topic_arn" {
+  type        = string
+  description = "ARN del topic SNS de ordenes"
+}
+
+variable "sqs_inventory_queue_arn" {
+  type        = string
+  description = "ARN de la cola SQS de inventario"
+}
