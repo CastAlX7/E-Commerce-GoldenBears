@@ -12,10 +12,14 @@ resource "aws_rds_cluster" "aurora" {
   database_name      = "goldenbearsdb"
   master_username    = "dbadmin"
   manage_master_user_password = true
+  iam_database_authentication_enabled = true
   storage_encrypted = true
+  kms_key_id = var.kms_key_arn
+  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.aurora_pg.name
   db_subnet_group_name   = aws_db_subnet_group.aurora.name
   vpc_security_group_ids = [var.aurora_sg_id]
   enabled_cloudwatch_logs_exports = ["postgresql"]
+  copy_tags_to_snapshot = true
   deletion_protection       = false  #En una situación real tendría q ser true, pero como tenemos que hacer varios destroy, es preferible dejarlo así
   skip_final_snapshot       = false
   final_snapshot_identifier = "${var.project_name}-aurora-final-snapshot"
@@ -34,4 +38,26 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
   instance_class     = "db.serverless"
   engine             = aws_rds_cluster.aurora.engine
   engine_version     = aws_rds_cluster.aurora.engine_version
+  
+  monitoring_interval = 60
+  monitoring_role_arn = aws_iam_role.rds_enhanced_monitoring.arn
+
+  performance_insights_enabled = true
+  auto_minor_version_upgrade   = true
+}
+
+resource "aws_rds_cluster_parameter_group" "aurora_pg" {
+  name        = "${var.project_name}-aurora-pg"
+  family      = "aurora-postgresql15"
+  description = "Parameter group con query logging habilitado"
+
+  parameter {
+    name  = "log_statement"
+    value = "ddl"
+  }
+
+  parameter {
+    name  = "log_min_duration_statement"
+    value = "1000"
+  }
 }
