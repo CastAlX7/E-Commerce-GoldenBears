@@ -64,14 +64,14 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
           "sqs:DeleteMessage",
           "sqs:GetQueueAttributes"
         ]
-        Resource = "*"
+        Resource = var.sqs_inventory_queue_arn
       },
       {
         Effect = "Allow"
         Action = [
           "sns:Publish"
         ]
-        Resource = "*"
+        Resource = var.sns_orders_topic_arn
       },
       {
         Effect = "Allow"
