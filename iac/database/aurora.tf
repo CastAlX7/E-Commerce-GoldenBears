@@ -15,6 +15,7 @@ resource "aws_rds_cluster" "aurora" {
   iam_database_authentication_enabled = true
   storage_encrypted = true
   kms_key_id = var.kms_key_arn
+  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.aurora_pg.name
   db_subnet_group_name   = aws_db_subnet_group.aurora.name
   vpc_security_group_ids = [var.aurora_sg_id]
   enabled_cloudwatch_logs_exports = ["postgresql"]
@@ -37,4 +38,20 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
   instance_class     = "db.serverless"
   engine             = aws_rds_cluster.aurora.engine
   engine_version     = aws_rds_cluster.aurora.engine_version
+}
+
+resource "aws_rds_cluster_parameter_group" "aurora_pg" {
+  name        = "${var.project_name}-aurora-pg"
+  family      = "aurora-postgresql15"
+  description = "Parameter group con query logging habilitado"
+
+  parameter {
+    name  = "log_statement"
+    value = "ddl"
+  }
+
+  parameter {
+    name  = "log_min_duration_statement"
+    value = "1000"
+  }
 }
