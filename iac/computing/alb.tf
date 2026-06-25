@@ -4,6 +4,7 @@ resource "aws_lb" "ecs_alb" {
   load_balancer_type = "application"
   security_groups    = [var.alb_sg_id]
   subnets            = var.private_subnets
+  drop_invalid_header_fields = true
 }
 
 # Creacion de ALB target groups ECS
