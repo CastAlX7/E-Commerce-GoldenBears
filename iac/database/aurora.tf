@@ -38,6 +38,10 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
   instance_class     = "db.serverless"
   engine             = aws_rds_cluster.aurora.engine
   engine_version     = aws_rds_cluster.aurora.engine_version
+  
+  monitoring_interval = 60
+  monitoring_role_arn = aws_iam_role.rds_enhanced_monitoring.arn
+
 }
 
 resource "aws_rds_cluster_parameter_group" "aurora_pg" {
