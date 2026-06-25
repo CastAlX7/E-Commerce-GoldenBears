@@ -22,10 +22,10 @@ resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
 
 resource "aws_flow_log" "main" {
   vpc_id               = aws_vpc.main.id
-  traffic_type          = "ALL"
-  log_destination_type  = "cloud-watch-logs"
-  log_group_name        = aws_cloudwatch_log_group.vpc_flow_logs.name
-  iam_role_arn          = aws_iam_role.vpc_flow_logs_role.arn
+  traffic_type         = "ALL"
+  log_destination_type = "cloud-watch-logs"
+  iam_role_arn         = aws_iam_role.vpc_flow_logs_role.arn
+  log_destination      = aws_cloudwatch_log_group.vpc_flow_logs.arn
 
   tags = {
     Name        = "${var.project_name}-vpc-flow-logs"

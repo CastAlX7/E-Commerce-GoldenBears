@@ -23,8 +23,8 @@ module "database" {
   rds_proxy_sg_id        = module.networking.rds_proxy_sg_id
   elasticache_sg_id      = module.networking.elasticache_sg_id
   redis_auth_token       = var.redis_auth_token
-  kms_key_arn = module.security.kms_key_arn
-  elasticache_kms_key_arn = module.security.kms_key_arn
+  kms_key_arn             = module.security.secrets_kms_key_arn
+  elasticache_kms_key_arn = module.security.secrets_kms_key_arn
 }
 
 module "messaging" {
@@ -34,10 +34,11 @@ module "messaging" {
   region                   = var.region
   private_lambda_subnet_id = module.networking.private_lambda_subnet_id
   lambda_inv_sg_id         = module.networking.lambda_inventario_sg_id
-  logs_kms_key_arn = module.security.kms_key_arn
+  logs_kms_key_arn = module.security.secrets_kms_key_arn
   vpc_id                   = module.networking.vpc_id
   rds_proxy_resource_id    = module.database.rds_proxy_resource_id
   nubefact_secret_arn      = module.security.nubefact_secret_arn
+  s3_kms_key_arn           = module.security.secrets_kms_key_arn
 }
 
 module "computing" {
@@ -57,11 +58,12 @@ module "computing" {
 }
 
 module "presentacion" {
-  source       = "./presentacion"
-  bucket_name  = "${var.project_name}-frontend-app-bucket"
-  domain_name  = var.domain_name
+  source               = "./presentacion"
+  bucket_name          = "${var.project_name}-frontend-app-bucket"
+  domain_name          = var.domain_name
   log_bucket_name      = var.log_bucket_name
   event_queue_arn      = var.event_queue_arn
   replica_bucket_arn   = var.replica_bucket_arn
   replication_role_arn = var.replication_role_arn
+  acm_certificate_arn  = var.acm_certificate_arn
 }

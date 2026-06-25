@@ -32,8 +32,3 @@ output "redis_reader_endpoint" {
   value       = aws_elasticache_replication_group.redis.reader_endpoint_address
   description = "Endpoint de solo lectura del nodo réplica de Redis."
 }
-
-output "kms_key_arn" {
-  value       = aws_kms_key.secrets_key.arn
-  description = "ARN de la llave KMS CMK"
-}
