@@ -43,3 +43,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "frontend_lifecycle" {
     }
   }
 }
+
+# Event notifications
+resource "aws_s3_bucket_notification" "frontend_notifications" {
+  bucket = aws_s3_bucket.frontend.id
+  queue {
+    queue_arn = var.event_queue_arn
+    events    = ["s3:ObjectCreated:*"]
+  }
+}

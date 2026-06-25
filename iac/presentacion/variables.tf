@@ -12,3 +12,8 @@ variable "log_bucket_name" {
   type        = string
   description = "Nombre del bucket destinado a guardar logs de acceso"
 }
+
+variable "event_queue_arn" {
+  type        = string
+  description = "ARN de la cola SQS para recibir notificaciones de eventos"
+}
