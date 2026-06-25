@@ -78,11 +78,25 @@ resource "aws_iam_role_policy" "permisos_lambda_inventario" {
         Effect = "Allow"
         Action = [
           "ec2:CreateNetworkInterface",
-          "ec2:DescribeNetworkInterfaces",
           "ec2:DeleteNetworkInterface"
+        ]
+        Resource = "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:network-interface/*"
+        Condition = {
+          StringEquals = {
+            "ec2:Vpc" = "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:vpc/${var.vpc_id}"
+          }
+        }
+      },
+      
+      {
+        Sid    = "LambdaVPCDescribe"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeNetworkInterfaces"
         ]
         Resource = "*"
       },
+
       {
         Sid    = "ConsumeSQSInventory"
         Effect = "Allow"
