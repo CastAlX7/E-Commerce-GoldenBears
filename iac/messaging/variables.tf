@@ -34,3 +34,13 @@ variable "nubefact_secret_arn" {
   sensitive   = true
   description = "ARN del secreto de NubeFact en Secrets Manager, proveniente del módulo security"
 }
+
+variable "logs_kms_key_arn" {
+  type        = string
+  description = "ARN de la llave KMS CMK para cifrado de CloudWatch Log Groups"
+}
+
+variable "vpc_id" {
+  type        = string
+  description = "ID de la VPC donde opera la Lambda de inventario"
+}

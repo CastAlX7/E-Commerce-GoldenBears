@@ -32,7 +32,21 @@ resource "aws_kms_key" "secrets_key" {
           "kms:GenerateDataKey*"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "AllowCloudWatchLogs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+        ]
+        Resource = "*"
       }
+
     ]
   })
 }

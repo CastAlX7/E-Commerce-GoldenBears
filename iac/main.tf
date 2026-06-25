@@ -34,6 +34,8 @@ module "messaging" {
   region                   = var.region
   private_lambda_subnet_id = module.networking.private_lambda_subnet_id
   lambda_inv_sg_id         = module.networking.lambda_inventario_sg_id
+  logs_kms_key_arn = module.security.kms_key_arn
+  vpc_id                   = module.networking.vpc_id
   rds_proxy_resource_id    = module.database.rds_proxy_resource_id
   nubefact_secret_arn      = module.security.nubefact_secret_arn
 }

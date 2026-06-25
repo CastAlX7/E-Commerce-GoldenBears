@@ -7,12 +7,14 @@ data "aws_region" "current" {}
 
 resource "aws_cloudwatch_log_group" "lambda_inventory_logs" {
   name              = "/aws/lambda/${var.project_name}-inventory"
-  retention_in_days = 30
+  retention_in_days = 365
+  kms_key_id        = var.logs_kms_key_arn
 }
 
 resource "aws_cloudwatch_log_group" "lambda_billing_logs" {
   name              = "/aws/lambda/${var.project_name}-billing"
   retention_in_days = 365
+  kms_key_id        = var.logs_kms_key_arn
 }
 
 # ---------------------------------------------------------------------------
@@ -76,11 +78,25 @@ resource "aws_iam_role_policy" "permisos_lambda_inventario" {
         Effect = "Allow"
         Action = [
           "ec2:CreateNetworkInterface",
-          "ec2:DescribeNetworkInterfaces",
           "ec2:DeleteNetworkInterface"
+        ]
+        Resource = "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:network-interface/*"
+        Condition = {
+          StringEquals = {
+            "ec2:Vpc" = "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:vpc/${var.vpc_id}"
+          }
+        }
+      },
+      
+      {
+        Sid    = "LambdaVPCDescribe"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeNetworkInterfaces"
         ]
         Resource = "*"
       },
+
       {
         Sid    = "ConsumeSQSInventory"
         Effect = "Allow"
