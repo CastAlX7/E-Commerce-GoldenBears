@@ -12,6 +12,7 @@ resource "aws_rds_cluster" "aurora" {
   database_name      = "goldenbearsdb"
   master_username    = "dbadmin"
   manage_master_user_password = true
+  iam_database_authentication_enabled = true
   storage_encrypted = true
   kms_key_id = var.kms_key_arn
   db_subnet_group_name   = aws_db_subnet_group.aurora.name
