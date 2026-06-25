@@ -31,3 +31,15 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "frontend_encrypti
     }
   }
 }
+
+# Lifecycle configuration
+resource "aws_s3_bucket_lifecycle_configuration" "frontend_lifecycle" {
+  bucket = aws_s3_bucket.frontend.id
+  rule {
+    id     = "cleanup-incomplete-uploads"
+    status = "Enabled"
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
