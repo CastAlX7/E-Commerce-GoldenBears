@@ -42,6 +42,8 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
   monitoring_interval = 60
   monitoring_role_arn = aws_iam_role.rds_enhanced_monitoring.arn
 
+  performance_insights_enabled = true
+  auto_minor_version_upgrade   = true
 }
 
 resource "aws_rds_cluster_parameter_group" "aurora_pg" {
