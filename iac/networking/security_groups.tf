@@ -85,7 +85,16 @@ resource "aws_vpc_security_group_egress_rule" "ecs_to_internet_https" {
   from_port         = 443
   to_port           = 443
   ip_protocol       = "tcp"
-  description       = "Salida HTTPS general para pasarelas (Culqi/Niubiz) y VPC Endpoints"
+  description       = "Salida HTTPS hacia el internet publico via NAT Gateway"
+}
+
+resource "aws_vpc_security_group_egress_rule" "ecs_to_endpoints_internal" {
+  security_group_id            = aws_security_group.ecs.id
+  referenced_security_group_id = aws_security_group.vpc_endpoints.id
+  from_port                    = 443
+  to_port                      = 443
+  ip_protocol                  = "tcp"
+  description                  = "Permite acceso HTTPS únicamente a los VPC Endpoints"
 }
 
 # 4. SECURITY GROUP: RDS Proxy
