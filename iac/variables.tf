@@ -53,3 +53,8 @@ variable "replica_bucket_arn" {
   type        = string
   description = "ARN del bucket de destino en la región secundaria"
 }
+
+variable "acm_certificate_arn" {
+  type        = string
+  description = "ARN del certificado SSL en AWS Certificate Manager para CloudFront"
+}
