@@ -219,3 +219,11 @@ resource "aws_vpc_security_group_ingress_rule" "endpoints_from_lambda" {
   ip_protocol                  = "tcp"
   description                  = "Permite llamadas HTTPS seguras desde la Lambda de Inventario"
 }
+
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "${var.project_name}-default-sg-restringido"
+  }
+}
