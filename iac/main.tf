@@ -56,3 +56,6 @@ module "presentacion" {
 }
 
 alb_logs_bucket = module.messaging.documental_bucket_name
+
+sns_orders_topic_arn    = module.messaging.sns_orders_topic_arn
+sqs_inventory_queue_arn = module.messaging.sqs_inventory_queue_arn
