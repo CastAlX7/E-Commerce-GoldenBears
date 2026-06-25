@@ -43,3 +43,8 @@ variable "kms_key_arn" {
   type        = string
   description = "ARN de la llave KMS CMK para cifrado de Aurora"
 }
+
+variable "elasticache_kms_key_arn" {
+  type        = string
+  description = "ARN de la llave KMS CMK para cifrado en reposo de ElastiCache"
+}
