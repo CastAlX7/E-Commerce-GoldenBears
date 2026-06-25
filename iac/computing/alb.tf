@@ -1,16 +1,18 @@
 # Creacion de alb en private subnets
 resource "aws_lb" "ecs_alb" {
-  internal           = true
-  load_balancer_type = "application"
+  internal                   = true
+  load_balancer_type         = "application"
   security_groups    = [var.alb_sg_id]
   subnets            = var.private_subnets
   drop_invalid_header_fields = true
   enable_deletion_protection = true
+  desync_mitigation_mode     = "strictest"
+
   access_logs {
-      bucket  = var.alb_logs_bucket
-      prefix  = "alb"
-      enabled = true
-    }
+    bucket  = var.alb_logs_bucket
+    prefix  = "alb"
+    enabled = true
+  }
 }
 
 # Creacion de ALB target groups ECS
@@ -38,7 +40,12 @@ resource "aws_lb_listener" "front_end" {
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.alb_ecs_tg.arn
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }
 }
