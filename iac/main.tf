@@ -24,6 +24,7 @@ module "database" {
   elasticache_sg_id      = module.networking.elasticache_sg_id
   redis_auth_token       = var.redis_auth_token
   kms_key_arn = module.security.kms_key_arn
+  elasticache_kms_key_arn = module.security.kms_key_arn
 }
 
 module "messaging" {
