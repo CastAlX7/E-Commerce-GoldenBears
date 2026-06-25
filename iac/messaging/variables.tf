@@ -44,3 +44,8 @@ variable "vpc_id" {
   type        = string
   description = "ID de la VPC donde opera la Lambda de inventario"
 }
+
+variable "s3_kms_key_arn" {
+  type        = string
+  description = "ARN de la llave KMS CMK para cifrado del bucket S3 documental"
+}

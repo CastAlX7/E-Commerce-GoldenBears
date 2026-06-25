@@ -45,6 +45,18 @@ resource "aws_kms_key" "secrets_key" {
           "kms:GenerateDataKey"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "AllowS3KMS"
+        Effect = "Allow"
+        Principal = {
+          Service = "s3.amazonaws.com"
+        }
+        Action = [
+          "kms:GenerateDataKey",
+          "kms:Decrypt"
+        ]
+        Resource = "*"
       }
 
     ]
