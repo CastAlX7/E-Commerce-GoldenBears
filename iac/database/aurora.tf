@@ -5,24 +5,26 @@ resource "aws_db_subnet_group" "aurora" {
 }
 
 resource "aws_rds_cluster" "aurora" {
-  cluster_identifier = "${var.project_name}-aurora-cluster"
-  engine             = "aurora-postgresql"
-  engine_mode        = "provisioned"
-  engine_version     = "15.4"
-  database_name      = "goldenbearsdb"
-  master_username    = "dbadmin"
-  manage_master_user_password = true
+  cluster_identifier                  = "${var.project_name}-aurora-cluster"
+  engine                              = "aurora-postgresql"
+  engine_mode                         = "provisioned"
+  engine_version                      = "15.4"
+  database_name                       = "goldenbearsdb"
+  master_username                     = "dbadmin"
+  manage_master_user_password        = true
   iam_database_authentication_enabled = true
-  storage_encrypted = true
-  kms_key_id = var.kms_key_arn
-  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.aurora_pg.name
-  db_subnet_group_name   = aws_db_subnet_group.aurora.name
-  vpc_security_group_ids = [var.aurora_sg_id]
-  enabled_cloudwatch_logs_exports = ["postgresql"]
-  copy_tags_to_snapshot = true
-  deletion_protection       = false  #En una situación real tendría q ser true, pero como tenemos que hacer varios destroy, es preferible dejarlo así
-  skip_final_snapshot       = false
-  final_snapshot_identifier = "${var.project_name}-aurora-final-snapshot"
+  storage_encrypted                   = true
+  kms_key_id                          = var.kms_key_arn
+  db_cluster_parameter_group_name     = aws_rds_cluster_parameter_group.aurora_pg.name
+  db_subnet_group_name                = aws_db_subnet_group.aurora.name
+  vpc_security_group_ids              = [var.aurora_sg_id]
+  enabled_cloudwatch_logs_exports     = ["postgresql"]
+  copy_tags_to_snapshot               = true
+  skip_final_snapshot                 = false
+  final_snapshot_identifier           = "${var.project_name}-aurora-final-snapshot"
+
+  # SOLUCIÓN CKV_AWS_139: Protección contra borrado activada para producción
+  deletion_protection                 = true
 
   # Configuración Serverless v2
   serverlessv2_scaling_configuration {
