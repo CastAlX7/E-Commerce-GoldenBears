@@ -28,7 +28,6 @@ resource "aws_wafv2_web_acl" "frontend_waf" {
     }
   }
 
-  # Grupo de reglas para mitigar Log4j y Bad Inputs
   rule {
     name     = "AWSManagedRulesKnownBadInputsRuleSet"
     priority = 2
@@ -56,4 +55,9 @@ resource "aws_wafv2_web_acl" "frontend_waf" {
     metric_name                = "GoldenBearsFrontendWafMetric"
     sampled_requests_enabled   = true
   }
+} 
+
+resource "aws_wafv2_web_acl_logging_configuration" "frontend_waf_logging" {
+  log_destination_configs = [var.log_bucket_name] 
+  resource_arn            = aws_wafv2_web_acl.frontend_waf.arn
 }
