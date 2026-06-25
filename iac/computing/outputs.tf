@@ -17,3 +17,13 @@ output "documental_bucket_name" {
   value       = aws_s3_bucket.documental.bucket
   description = "Nombre del bucket S3 documental para logs y comprobantes"
 }
+
+output "sns_orders_topic_arn" {
+  value       = aws_sns_topic.orders_topic.arn
+  description = "ARN del topic SNS de ordenes"
+}
+
+output "sqs_inventory_queue_arn" {
+  value       = aws_sqs_queue.inventory_queue.arn
+  description = "ARN de la cola SQS de inventario"
+}
