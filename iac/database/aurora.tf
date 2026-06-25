@@ -22,8 +22,6 @@ resource "aws_rds_cluster" "aurora" {
   copy_tags_to_snapshot               = true
   skip_final_snapshot                 = false
   final_snapshot_identifier           = "${var.project_name}-aurora-final-snapshot"
-
-  # SOLUCIÓN CKV_AWS_139: Protección contra borrado activada para producción
   deletion_protection                 = true
 
   # Configuración Serverless v2

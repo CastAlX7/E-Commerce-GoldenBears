@@ -27,11 +27,13 @@ resource "aws_apigatewayv2_integration" "apigw_integration" {
                                 aws_lb_listener.front_end]
 }
 
-# API GW route with any method.
 resource "aws_apigatewayv2_route" "apigw_route" {
   api_id    = aws_apigatewayv2_api.apigw_http_endpoint.id
   route_key = "ANY /{proxy+}"
-  target = "integrations/${aws_apigatewayv2_integration.apigw_integration.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.apigw_integration.id}"
+
+  authorization_type = "NONE"
+
   depends_on = [aws_apigatewayv2_integration.apigw_integration]
 }
 
