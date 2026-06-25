@@ -42,3 +42,8 @@ variable "secrets_kms_key_arn" {
   type        = string
   description = "ARN de la llave KMS para descifrar secretos"
 }
+
+variable "alb_logs_bucket" {
+  type        = string
+  description = "Nombre del bucket S3 para access logs del ALB"
+}
