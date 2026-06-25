@@ -35,7 +35,6 @@ resource "aws_apigatewayv2_route" "apigw_route" {
   depends_on = [aws_apigatewayv2_integration.apigw_integration]
 }
 
-#Guardar el texto de cada request en un log group
 resource "aws_cloudwatch_log_group" "apigw_logs" {
   name              = "/aws/apigateway/${var.project_name}-access-logs"
   retention_in_days = 365
@@ -49,5 +48,16 @@ resource "aws_apigatewayv2_stage" "apigw_stage" {
 
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.apigw_logs.arn
+    
+    format          = jsonencode({
+      requestId      = "$context.requestId"
+      ip             = "$context.identity.sourceIp"
+      requestTime    = "$context.requestTime"
+      httpMethod     = "$context.httpMethod"
+      routeKey       = "$context.routeKey"
+      status         = "$context.status"
+      protocol       = "$context.protocol"
+      responseLength = "$context.responseLength"
+    })
   }
 }
