@@ -47,6 +47,9 @@ module "computing" {
   vpc_link_sg_id      = module.networking.vpc_link_sg_id
   app_db_secret_arn   = module.security.app_db_secret_arn
   secrets_kms_key_arn = module.security.secrets_kms_key_arn
+  alb_logs_bucket = module.messaging.documental_bucket_name
+  sns_orders_topic_arn    = module.messaging.sns_orders_topic_arn
+  sqs_inventory_queue_arn = module.messaging.sqs_inventory_queue_arn
 }
 
 module "presentacion" {
