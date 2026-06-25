@@ -16,6 +16,7 @@ resource "aws_rds_cluster" "aurora" {
   db_subnet_group_name   = aws_db_subnet_group.aurora.name
   vpc_security_group_ids = [var.aurora_sg_id]
   enabled_cloudwatch_logs_exports = ["postgresql"]
+  copy_tags_to_snapshot = true
   deletion_protection       = false  #En una situación real tendría q ser true, pero como tenemos que hacer varios destroy, es preferible dejarlo así
   skip_final_snapshot       = false
   final_snapshot_identifier = "${var.project_name}-aurora-final-snapshot"
