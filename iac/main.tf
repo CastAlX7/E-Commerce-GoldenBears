@@ -50,7 +50,11 @@ module "computing" {
 }
 
 module "presentacion" {
-  source      = "./presentacion"
-  bucket_name = "${var.project_name}-frontend-app-bucket"
-  domain_name = var.domain_name
+  source       = "./presentacion"
+  bucket_name  = "${var.project_name}-frontend-app-bucket"
+  domain_name  = var.domain_name
+  log_bucket_name      = var.log_bucket_name
+  event_queue_arn      = var.event_queue_arn
+  replica_bucket_arn   = var.replica_bucket_arn
+  replication_role_arn = var.replication_role_arn
 }
