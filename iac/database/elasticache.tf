@@ -15,6 +15,8 @@ resource "aws_elasticache_replication_group" "redis" {
   subnet_group_name          = aws_elasticache_subnet_group.redis.name
   security_group_ids         = [var.elasticache_sg_id]
   at_rest_encryption_enabled = true
+  kms_key_id = var.elasticache_kms_key_arn
+  at_rest_encryption_enabled = true
   transit_encryption_enabled = true
   auth_token                 = var.redis_auth_token
   auth_token_update_strategy = "ROTATE"
