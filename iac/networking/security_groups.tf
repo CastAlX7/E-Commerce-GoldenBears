@@ -182,6 +182,7 @@ resource "aws_vpc_security_group_egress_rule" "lambda_to_endpoints_internal" {
   from_port         = 443
   to_port           = 443
   ip_protocol       = "tcp"
+  description       = "Permite acceso HTTPS a servicios externos mediante NAT Gateway"
 }
 
 # 8. SECURITY GROUP: VPC Endpoints (Interface Endpoints)
