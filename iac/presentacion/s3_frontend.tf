@@ -21,3 +21,13 @@ resource "aws_s3_bucket_logging" "frontend_logging" {
   target_bucket = var.log_bucket_name
   target_prefix = "log/"
 }
+
+# Encriptación KMS
+resource "aws_s3_bucket_server_side_encryption_configuration" "frontend_encryption" {
+  bucket = aws_s3_bucket.frontend.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "aws:kms"
+    }
+  }
+}
