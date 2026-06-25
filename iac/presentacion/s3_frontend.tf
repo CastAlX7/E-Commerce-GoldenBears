@@ -52,3 +52,18 @@ resource "aws_s3_bucket_notification" "frontend_notifications" {
     events    = ["s3:ObjectCreated:*"]
   }
 }
+
+# Cross-region replication
+resource "aws_s3_bucket_replication_configuration" "frontend_replication" {
+  depends_on = [aws_s3_bucket_versioning.frontend_versioning]
+  role       = var.replication_role_arn
+  bucket     = aws_s3_bucket.frontend.id
+  rule {
+    id     = "replicate-all"
+    status = "Enabled"
+    destination {
+      bucket        = var.replica_bucket_arn
+      storage_class = "STANDARD"
+    }
+  }
+}

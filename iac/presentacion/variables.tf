@@ -17,3 +17,13 @@ variable "event_queue_arn" {
   type        = string
   description = "ARN de la cola SQS para recibir notificaciones de eventos"
 }
+
+variable "replication_role_arn" {
+  type        = string
+  description = "ARN del rol IAM con permisos para la replicación entre regiones"
+}
+
+variable "replica_bucket_arn" {
+  type        = string
+  description = "ARN del bucket de destino en la región secundaria"
+}
