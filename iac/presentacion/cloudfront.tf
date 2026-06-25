@@ -10,7 +10,7 @@ resource "aws_cloudfront_origin_access_control" "frontend_oac" {
   signing_protocol                  = "sigv4"
 }
 
-# Política de cabeceras de seguridad HTTP
+# Política de cabeceras de respuesta
 resource "aws_cloudfront_response_headers_policy" "security_headers" {
   name = "golden-bears-security-headers-policy"
 
@@ -41,10 +41,31 @@ resource "aws_cloudfront_response_headers_policy" "security_headers" {
 }
 
 resource "aws_cloudfront_distribution" "frontend_cdn" {
+  # Origin Failover Configurado
+  origin_group {
+    origin_id = "s3_origin_group"
+    failover_criteria {
+      status_codes = [500, 502, 503, 504]
+    }
+    member {
+      origin_id = local.s3_origin_id
+    }
+    member {
+      origin_id = "failoverS3Origin"
+    }
+  }
+
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend_oac.id
     origin_id                = local.s3_origin_id
+  }
+
+  # Origen secundario para el Failover
+  origin {
+    domain_name              = "${var.bucket_name}-replica.s3.amazonaws.com"
+    origin_access_control_id = aws_cloudfront_origin_access_control.frontend_oac.id
+    origin_id                = "failoverS3Origin"
   }
 
   enabled             = true
@@ -56,7 +77,7 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
-    target_origin_id = local.s3_origin_id
+    target_origin_id = "s3_origin_group"
 
     forwarded_values {
       query_string = false
