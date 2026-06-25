@@ -13,6 +13,7 @@ resource "aws_rds_cluster" "aurora" {
   master_username    = "dbadmin"
   manage_master_user_password = true
   storage_encrypted = true
+  kms_key_id = var.kms_key_arn
   db_subnet_group_name   = aws_db_subnet_group.aurora.name
   vpc_security_group_ids = [var.aurora_sg_id]
   enabled_cloudwatch_logs_exports = ["postgresql"]
