@@ -74,6 +74,13 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
   
   web_acl_id = aws_wafv2_web_acl.frontend_waf.arn
 
+  # Access Logging del CDN habilitado
+  logging_config {
+    include_cookies = false
+    bucket          = aws_s3_bucket.frontend.bucket_regional_domain_name
+    prefix          = "cloudfront/"
+  }
+
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
