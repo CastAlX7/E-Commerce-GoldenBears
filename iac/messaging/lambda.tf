@@ -80,10 +80,10 @@ resource "aws_iam_role_policy" "permisos_lambda_inventario" {
           "ec2:CreateNetworkInterface",
           "ec2:DeleteNetworkInterface"
         ]
-        Resource = "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:network-interface/*"
+        Resource = "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:network-interface/*"
         Condition = {
           StringEquals = {
-            "ec2:Vpc" = "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:vpc/${var.vpc_id}"
+            "ec2:Vpc" = "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:vpc/${var.vpc_id}"
           }
         }
       },
@@ -112,7 +112,7 @@ resource "aws_iam_role_policy" "permisos_lambda_inventario" {
         Sid      = "RDSProxyIAMAuth"
         Effect   = "Allow"
         Action   = "rds-db:connect"
-        Resource = "arn:aws:rds-db:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:dbuser:${var.rds_proxy_resource_id}/inventory_user"
+        Resource = "arn:aws:rds-db:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:dbuser:${var.rds_proxy_resource_id}/inventory_user"
       },
       {
         Sid    = "CloudWatchLogs"
@@ -122,7 +122,7 @@ resource "aws_iam_role_policy" "permisos_lambda_inventario" {
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-inventory*"
+        Resource = "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-inventory*"
       }
     ]
   })
@@ -141,6 +141,12 @@ resource "aws_lambda_function" "lambda_comprobantes" {
   timeout       = 60
 
   reserved_concurrent_executions = 10
+
+  # SOLUCIÓN CKV_AWS_117: Inyectar la función dentro de la infraestructura de red privada
+  vpc_config {
+    subnet_ids         = [var.private_lambda_subnet_id]
+    security_group_ids = [var.lambda_inv_sg_id] # Reutiliza el grupo de seguridad de red interna asignado
+  }
 
   tracing_config {
     mode = "Active"
@@ -179,6 +185,29 @@ resource "aws_iam_role_policy" "permisos_lambda_comprobantes" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      # SOLUCIÓN DE OPERACIÓN EN VPC: Permisos obligatorios para adjuntar interfaces de red
+      {
+        Sid    = "LambdaVPCNetworking"
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DeleteNetworkInterface"
+        ]
+        Resource = "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:network-interface/*"
+        Condition = {
+          StringEquals = {
+            "ec2:Vpc" = "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:vpc/${var.vpc_id}"
+          }
+        }
+      },
+      {
+        Sid    = "LambdaVPCDescribe"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeNetworkInterfaces"
+        ]
+        Resource = "*"
+      },
       {
         Sid    = "ConsumeSQSBilling"
         Effect = "Allow"
@@ -214,7 +243,7 @@ resource "aws_iam_role_policy" "permisos_lambda_comprobantes" {
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-billing*"
+        Resource = "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-billing*"
       }
     ]
   })
