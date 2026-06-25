@@ -100,9 +100,11 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     max_ttl                    = 86400
   }
 
+  # Geo restriction configurada como whitelist
   restrictions {
     geo_restriction {
-      restriction_type = "none"
+      restriction_type = "whitelist"
+      locations        = ["PE"]
     }
   }
 
