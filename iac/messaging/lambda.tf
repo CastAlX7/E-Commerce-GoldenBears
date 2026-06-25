@@ -8,11 +8,13 @@ data "aws_region" "current" {}
 resource "aws_cloudwatch_log_group" "lambda_inventory_logs" {
   name              = "/aws/lambda/${var.project_name}-inventory"
   retention_in_days = 365
+  kms_key_id        = var.logs_kms_key_arn
 }
 
 resource "aws_cloudwatch_log_group" "lambda_billing_logs" {
   name              = "/aws/lambda/${var.project_name}-billing"
   retention_in_days = 365
+  kms_key_id        = var.logs_kms_key_arn
 }
 
 # ---------------------------------------------------------------------------
