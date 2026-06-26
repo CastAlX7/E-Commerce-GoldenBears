@@ -33,6 +33,7 @@ resource "aws_lambda_function" "lambda_inventario" {
   handler                        = "handler.lambda_handler"
   timeout                        = 30
   reserved_concurrent_executions = 10
+  kms_key_arn                    = aws_kms_key.shared.arn
 
   vpc_config {
     subnet_ids         = [aws_subnet.private_lambda_a.id]
