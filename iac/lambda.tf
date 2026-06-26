@@ -80,7 +80,11 @@ resource "aws_lambda_function" "lambda_comprobantes" {
   timeout                        = 60
   reserved_concurrent_executions = 10
 
-  # Lambda fuera de VPC: accede a NubeFact/SUNAT por Internet directamente
+  vpc_config {
+    subnet_ids         = [aws_subnet.private_app_a.id, aws_subnet.private_app_b.id]
+    security_group_ids = [aws_security_group.lambda_comprobantes.id]
+  }
+  
   tracing_config {
     mode = "Active"
   }
