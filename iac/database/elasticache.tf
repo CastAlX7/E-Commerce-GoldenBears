@@ -18,5 +18,4 @@ resource "aws_elasticache_replication_group" "redis" {
   kms_key_id                 = var.elasticache_kms_key_arn
   transit_encryption_enabled = true
   auth_token                 = var.redis_auth_token
-  auth_token_update_strategy = "ROTATE"
 }
