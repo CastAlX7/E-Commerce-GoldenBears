@@ -23,11 +23,14 @@ resource "aws_ecs_task_definition" "main" {
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
 
-  # CRÍTICO: REEMPLAZAR nginx:latest CON LA IMAGEN REAL DE LA APLICACIÓN ANTES DE APLICAR EN PRODUCCIÓN
   container_definitions = jsonencode([{
     name      = "web"
     image     = "nginx:latest"
     essential = true
+    
+    # Forzar el sistema de archivos raíz a solo lectura
+    readonlyRootFilesystem = true
+
     portMappings = [{
       containerPort = 8080
       hostPort      = 8080
