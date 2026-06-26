@@ -5,7 +5,7 @@ resource "aws_lb" "ecs_alb" {
   security_groups            = [aws_security_group.alb.id]
   subnets                    = [aws_subnet.private_ingress_a.id, aws_subnet.private_ingress_b.id]
   drop_invalid_header_fields = true
-  enable_deletion_protection = var.aurora_deletion_protection
+  enable_deletion_protection = var.alb_deletion_protection
 
   access_logs {
     bucket  = aws_s3_bucket.documental.id
@@ -51,8 +51,13 @@ resource "aws_lb_listener" "main" {
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.main.arn
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }
 
   tags = {
