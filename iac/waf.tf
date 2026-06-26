@@ -1,6 +1,8 @@
-resource "aws_wafv2_web_acl" "frontend_waf" {
-  name        = "golden-bears-frontend-waf"
+resource "aws_wafv2_web_acl" "frontend" {
+  provider    = aws.us_east_1
+  name        = "${var.project_name}-frontend-waf-${terraform.workspace}"
   scope       = "CLOUDFRONT"
+  description = "WAF para la distribución CloudFront del marketplace Golden Bears"
 
   default_action {
     allow {}
@@ -23,7 +25,7 @@ resource "aws_wafv2_web_acl" "frontend_waf" {
 
     visibility_config {
       cloudwatch_metrics_enabled = true
-      metric_name                = "AWSManagedRulesCommonRuleSetMetric"
+      metric_name                = "${var.project_name}-common-rules-${terraform.workspace}"
       sampled_requests_enabled   = true
     }
   }
@@ -45,19 +47,27 @@ resource "aws_wafv2_web_acl" "frontend_waf" {
 
     visibility_config {
       cloudwatch_metrics_enabled = true
-      metric_name                = "AWSManagedRulesLog4jMetric"
+      metric_name                = "${var.project_name}-bad-inputs-rules-${terraform.workspace}"
       sampled_requests_enabled   = true
     }
   }
 
   visibility_config {
     cloudwatch_metrics_enabled = true
-    metric_name                = "GoldenBearsFrontendWafMetric"
+    metric_name                = "${var.project_name}-waf-${terraform.workspace}"
     sampled_requests_enabled   = true
   }
-} 
 
-resource "aws_wafv2_web_acl_logging_configuration" "frontend_waf_logging" {
-  log_destination_configs = [var.log_bucket_name] 
-  resource_arn            = aws_wafv2_web_acl.frontend_waf.arn
+  tags = {
+    Name        = "${var.project_name}-frontend-waf-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_wafv2_web_acl_logging_configuration" "frontend" {
+  provider                = aws.us_east_1
+  log_destination_configs = ["arn:aws:s3:::${var.log_bucket_name}"]
+  resource_arn            = aws_wafv2_web_acl.frontend.arn
 }
