@@ -130,3 +130,13 @@ variable "alb_deletion_protection" {
   type        = bool
   default     = false
 }
+
+variable "documental_replica_bucket_arn" {
+  type        = string
+  description = "ARN del bucket S3 réplica del documental en región secundaria (pre-existente)"
+}
+
+variable "documental_replication_role_arn" {
+  type        = string
+  description = "ARN del rol IAM de replicación S3 cross-region para documental (pre-existente)"
+}

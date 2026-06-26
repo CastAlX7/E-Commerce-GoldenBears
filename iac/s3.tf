@@ -185,3 +185,20 @@ resource "aws_s3_bucket_policy" "alb_logs" {
     }]
   })
 }
+
+resource "aws_s3_bucket_replication_configuration" "documental" {
+  bucket = aws_s3_bucket.documental.id
+  role   = var.documental_replication_role_arn
+
+  rule {
+    id     = "replicate-all-documental"
+    status = "Enabled"
+
+    destination {
+      bucket        = var.documental_replica_bucket_arn
+      storage_class = "STANDARD"
+    }
+  }
+
+  depends_on = [aws_s3_bucket_versioning.documental]
+}
