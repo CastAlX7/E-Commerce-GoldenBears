@@ -123,3 +123,10 @@ variable "route53_query_log_group_arn" {
   type        = string
   description = "ARN del log group de CloudWatch en us-east-1 para Route53 query logs"
 }
+
+# variables.tf
+variable "alb_deletion_protection" {
+  description = "Enable deletion protection for the ALB"
+  type        = bool
+  default     = false
+}
