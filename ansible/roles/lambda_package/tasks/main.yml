@@ -1,0 +1,35 @@
+- name: Verificar que existe el código de Lambda inventario
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/../../backend/lambdas/inventario"
+  register: inventario_dir
+
+- name: Fallar si no existe el código de Lambda inventario
+  ansible.builtin.fail:
+    msg: "No existe backend/lambdas/inventario/ — agrega el código real de la Lambda antes de continuar"
+  when: not inventario_dir.stat.exists
+
+- name: Verificar que existe el código de Lambda comprobantes
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/../../backend/lambdas/comprobantes"
+  register: comprobantes_dir
+
+- name: Fallar si no existe el código de Lambda comprobantes
+  ansible.builtin.fail:
+    msg: "No existe backend/lambdas/comprobantes/ — agrega el código real de la Lambda antes de continuar"
+  when: not comprobantes_dir.stat.exists
+
+- name: Empaquetar Lambda inventario
+  community.general.archive:
+    path: "{{ playbook_dir }}/../../backend/lambdas/inventario/"
+    dest: "{{ playbook_dir }}/../../iac/lambda_inventario.zip"
+    format: zip
+
+- name: Empaquetar Lambda comprobantes
+  community.general.archive:
+    path: "{{ playbook_dir }}/../../backend/lambdas/comprobantes/"
+    dest: "{{ playbook_dir }}/../../iac/lambda_comprobantes.zip"
+    format: zip
+
+- name: Confirmar empaquetado
+  ansible.builtin.debug:
+    msg: "Lambdas empaquetadas: lambda_inventario.zip y lambda_comprobantes.zip en iac/"
