@@ -5,7 +5,7 @@ resource "aws_lb" "ecs_alb" {
   security_groups            = [aws_security_group.alb.id]
   subnets                    = [aws_subnet.private_ingress_a.id, aws_subnet.private_ingress_b.id]
   drop_invalid_header_fields = true
-  enable_deletion_protection = var.alb_deletion_protection
+  enable_deletion_protection = true
 
   access_logs {
     bucket  = aws_s3_bucket.documental.id
