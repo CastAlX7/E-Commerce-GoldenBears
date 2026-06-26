@@ -1,0 +1,34 @@
+- name: Obtener account ID de AWS
+  command: aws sts get-caller-identity --query Account --output text
+  register: account_id_result
+
+- name: Definir URL base de ECR
+  ansible.builtin.set_fact:
+    ecr_base: "{{ account_id_result.stdout }}.dkr.ecr.{{ aws_region }}.amazonaws.com"
+
+- name: Login a ECR
+  command: >
+    aws ecr get-login-password --region {{ aws_region }} |
+    docker login --username AWS --password-stdin {{ ecr_base }}
+
+- name: Build imagen backend
+  command: docker build -t {{ project_name }}-backend:{{ workspace }} {{ playbook_dir }}/../../backend
+
+- name: Tag imagen backend para ECR
+  command: >
+    docker tag {{ project_name }}-backend:{{ workspace }}
+    {{ ecr_base }}/{{ project_name }}-backend:{{ workspace }}
+
+- name: Push imagen backend a ECR
+  command: docker push {{ ecr_base }}/{{ project_name }}-backend:{{ workspace }}
+
+- name: Build imagen frontend
+  command: docker build -t {{ project_name }}-frontend:{{ workspace }} {{ playbook_dir }}/../../frontend
+
+- name: Tag imagen frontend para ECR
+  command: >
+    docker tag {{ project_name }}-frontend:{{ workspace }}
+    {{ ecr_base }}/{{ project_name }}-frontend:{{ workspace }}
+
+- name: Push imagen frontend a ECR
+  command: docker push {{ ecr_base }}/{{ project_name }}-frontend:{{ workspace }}
