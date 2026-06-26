@@ -1,0 +1,9 @@
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+  vars:
+    environment: prod
+    aws_region: us-east-1
+    project_name: golden-bears
+    workspace: prod
