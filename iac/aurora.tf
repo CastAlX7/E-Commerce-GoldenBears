@@ -76,8 +76,9 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
   engine_version               = aws_rds_cluster.aurora.engine_version
   monitoring_interval          = 60
   monitoring_role_arn          = aws_iam_role.rds_enhanced_monitoring.arn
-  performance_insights_enabled = true
-  auto_minor_version_upgrade   = true
+  performance_insights_enabled          = true
+  performance_insights_kms_key_id       = aws_kms_key.shared.arn
+  auto_minor_version_upgrade            = true
 
   tags = {
     Name        = "${var.project_name}-aurora-node-${count.index}-${terraform.workspace}"
