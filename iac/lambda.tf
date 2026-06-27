@@ -55,6 +55,8 @@ resource "aws_lambda_function" "lambda_inventario" {
     }
   }
 
+  code_signing_config_arn = aws_lambda_code_signing_config.lambda_inventario.arn
+
   tags = {
     Name        = "${var.project_name}-inventory-${terraform.workspace}"
     Environment = terraform.workspace
@@ -101,6 +103,8 @@ resource "aws_lambda_function" "lambda_comprobantes" {
     }
   }
 
+  code_signing_config_arn = aws_lambda_code_signing_config.lambda_comprobantes.arn
+
   tags = {
     Name        = "${var.project_name}-billing-${terraform.workspace}"
     Environment = terraform.workspace
@@ -115,4 +119,66 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda_billing" {
   event_source_arn = aws_sqs_queue.billing_queue.arn
   function_name    = aws_lambda_function.lambda_comprobantes.arn
   batch_size       = 10
+}
+
+# Nueva config - Perfil de firma con AWS Signer
+resource "aws_signer_signing_profile" "lambda_inventario" {
+  platform_id = "AWSLambda-SHA384-ECDSA"
+  name        = "${var.project_name}-inventory-${terraform.workspace}"
+
+  signature_validity_period {
+    value = 5
+    type  = "YEARS"
+  }
+
+  tags = {
+    Name        = "${var.project_name}-inventory-signing-profile-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Configuración de firma de código
+resource "aws_lambda_code_signing_config" "lambda_inventario" {
+  allowed_publishers {
+    signing_profile_version_arns = [aws_signer_signing_profile.lambda_inventario.version_arn]
+  }
+
+  policies {
+    untrusted_artifact_on_deployment = "Enforce"  # Bloquea despliegues no firmados o alterados
+  }
+
+  description = "${var.project_name}-inventory-${terraform.workspace} code signing config"
+}
+
+# Perfil de firma para lambda_comprobantes
+resource "aws_signer_signing_profile" "lambda_comprobantes" {
+  platform_id = "AWSLambda-SHA384-ECDSA"
+  name        = "${var.project_name}-billing-${terraform.workspace}"
+
+  signature_validity_period {
+    value = 5
+    type  = "YEARS"
+  }
+
+  tags = {
+    Name        = "${var.project_name}-billing-signing-profile-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Configuración de firma de código para lambda_comprobantes
+resource "aws_lambda_code_signing_config" "lambda_comprobantes" {
+  allowed_publishers {
+    signing_profile_version_arns = [aws_signer_signing_profile.lambda_comprobantes.version_arn]
+  }
+
+  policies {
+    untrusted_artifact_on_deployment = "Enforce"
+  }
+
+  description = "${var.project_name}-billing-${terraform.workspace} code signing config"
 }
