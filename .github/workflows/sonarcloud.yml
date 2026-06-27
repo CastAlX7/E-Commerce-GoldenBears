@@ -21,10 +21,3 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
-        with:
-          args: >
-            -Dsonar.organization=organizacioniac
-            -Dsonar.projectKey=CastAlX7_E-Commerce-GoldenBears
-            -Dsonar.sources=backend,frontend,iac,ansible
-            -Dsonar.exclusions=**/.terraform/**,**/*.tfstate,**/*.tfstate.backup,**/*.tfplan,**/placeholder.zip
-            -Dsonar.terraform.provider.aws.version=5.0.0
