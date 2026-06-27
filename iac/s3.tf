@@ -202,3 +202,14 @@ resource "aws_s3_bucket_replication_configuration" "documental" {
 
   depends_on = [aws_s3_bucket_versioning.documental]
 }
+
+# Habilitar notificaciones de eventos para el bucket Documental
+resource "aws_s3_bucket_notification" "documental" {
+  bucket = aws_s3_bucket.documental.id
+
+  queue {
+    queue_arn     = aws_sqs_queue.billing_queue.arn
+    events        = ["s3:ObjectCreated:*"]
+    filter_prefix = "facturas/"
+  }
+}
