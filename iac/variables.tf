@@ -104,16 +104,6 @@ variable "event_queue_arn" {
   description = "ARN de cola SQS externa para notificaciones S3 (pre-existente)"
 }
 
-variable "replica_bucket_arn" {
-  type        = string
-  description = "ARN del bucket S3 réplica en región secundaria (pre-existente)"
-}
-
-variable "replication_role_arn" {
-  type        = string
-  description = "ARN del rol IAM de replicación S3 cross-region (pre-existente)"
-}
-
 variable "acm_certificate_arn" {
   type        = string
   description = "ARN del certificado ACM en us-east-1 para CloudFront (pre-existente)"
@@ -122,14 +112,4 @@ variable "acm_certificate_arn" {
 variable "route53_query_log_group_arn" {
   type        = string
   description = "ARN del log group de CloudWatch en us-east-1 para Route53 query logs"
-}
-
-variable "documental_replica_bucket_arn" {
-  type        = string
-  description = "ARN del bucket S3 réplica del documental en región secundaria (pre-existente)"
-}
-
-variable "documental_replication_role_arn" {
-  type        = string
-  description = "ARN del rol IAM de replicación S3 cross-region para documental (pre-existente)"
 }

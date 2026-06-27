@@ -19,6 +19,12 @@ provider "aws" {
   region = "us-east-1"
 }
 
+# Proveedor secundario para las réplicas s3
+provider "aws" {
+  alias  = "replica"
+  region = "us-west-2" # Región de contingencia
+}
+
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 data "aws_elb_service_account" "main" {}

@@ -11,19 +11,19 @@ resource "aws_s3_bucket" "frontend" {
   }
 }
 
+resource "aws_s3_bucket_versioning" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "frontend" {
   bucket                  = aws_s3_bucket.frontend.id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
-}
-
-resource "aws_s3_bucket_versioning" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
-  versioning_configuration {
-    status = "Enabled"
-  }
 }
 
 resource "aws_s3_bucket_logging" "frontend" {
@@ -62,22 +62,6 @@ resource "aws_s3_bucket_notification" "frontend" {
   }
 }
 
-resource "aws_s3_bucket_replication_configuration" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
-  role   = var.replication_role_arn
-
-  rule {
-    id     = "replicate-all"
-    status = "Enabled"
-    destination {
-      bucket        = var.replica_bucket_arn
-      storage_class = "STANDARD"
-    }
-  }
-
-  depends_on = [aws_s3_bucket_versioning.frontend]
-}
-
 resource "aws_s3_bucket_policy" "frontend_oac" {
   bucket = aws_s3_bucket.frontend.id
   policy = jsonencode({
@@ -113,6 +97,13 @@ resource "aws_s3_bucket" "documental" {
   }
 }
 
+resource "aws_s3_bucket_versioning" "documental" {
+  bucket = aws_s3_bucket.documental.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "documental" {
   bucket                  = aws_s3_bucket.documental.id
   block_public_acls       = true
@@ -129,13 +120,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "documental" {
       kms_master_key_id = aws_kms_key.shared.arn
     }
     bucket_key_enabled = true
-  }
-}
-
-resource "aws_s3_bucket_versioning" "documental" {
-  bucket = aws_s3_bucket.documental.id
-  versioning_configuration {
-    status = "Enabled"
   }
 }
 
@@ -169,7 +153,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "documental" {
   }
 }
 
-# Permite al servicio ELB escribir access logs del ALB en el prefijo alb/
 resource "aws_s3_bucket_policy" "alb_logs" {
   bucket = aws_s3_bucket.documental.id
   policy = jsonencode({
@@ -186,24 +169,6 @@ resource "aws_s3_bucket_policy" "alb_logs" {
   })
 }
 
-resource "aws_s3_bucket_replication_configuration" "documental" {
-  bucket = aws_s3_bucket.documental.id
-  role   = var.documental_replication_role_arn
-
-  rule {
-    id     = "replicate-all-documental"
-    status = "Enabled"
-
-    destination {
-      bucket        = var.documental_replica_bucket_arn
-      storage_class = "STANDARD"
-    }
-  }
-
-  depends_on = [aws_s3_bucket_versioning.documental]
-}
-
-# Habilitar notificaciones de eventos para el bucket Documental
 resource "aws_s3_bucket_notification" "documental" {
   bucket = aws_s3_bucket.documental.id
 
@@ -213,3 +178,45 @@ resource "aws_s3_bucket_notification" "documental" {
     filter_prefix = "facturas/"
   }
 }
+
+resource "aws_s3_bucket" "documental_replica" {
+  provider = aws.replica
+  bucket   = "${var.project_name}-documental-replica-${terraform.workspace}"
+
+  tags = {
+    Name        = "${var.project_name}-documental-replica-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+    Compliance  = "SUNAT-Replica"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "documental_replica" {
+  provider = aws.replica
+  bucket   = aws_s3_bucket.documental_replica.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_replication_configuration" "documental" {
+  bucket = aws_s3_bucket.documental.id
+  role   = aws_iam_role.s3_replication_documental.arn
+
+  rule {
+    id     = "replicate-all-documental"
+    status = "Enabled"
+
+    destination {
+      bucket        = aws_s3_bucket.documental_replica.arn
+      storage_class = "STANDARD"
+    }
+  }
+
+  depends_on = [
+    aws_s3_bucket_versioning.documental,
+    aws_s3_bucket_versioning.documental_replica
+  ]
+}
+

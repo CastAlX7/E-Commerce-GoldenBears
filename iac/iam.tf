@@ -1,7 +1,3 @@
-# ============================================================
-# IAM consolidado: roles de todos los módulos en un único archivo
-# ============================================================
-
 # --- VPC Flow Logs ---
 
 resource "aws_iam_role" "vpc_flow_logs" {
@@ -345,3 +341,56 @@ resource "aws_iam_role_policy" "lambda_comprobantes" {
     ]
   })
 }
+
+resource "aws_iam_role" "s3_replication_documental" {
+  name = "${var.project_name}-s3-replication-role-${terraform.workspace}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "s3.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "s3_replication_documental" {
+  name = "${var.project_name}-s3-replication-policy-${terraform.workspace}"
+  role = aws_iam_role.s3_replication_documental.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetReplicationConfiguration",
+          "s3:ListBucket"
+        ]
+        Resource = [aws_s3_bucket.documental.arn]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObjectVersionForReplication",
+          "s3:GetObjectVersionAcl",
+          "s3:GetObjectVersionTagging"
+        ]
+        Resource = ["${aws_s3_bucket.documental.arn}/*"]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ReplicateObject",
+          "s3:ReplicateDelete",
+          "s3:ReplicateTags"
+        ]
+        Resource = ["${aws_s3_bucket.documental_replica.arn}/*"]
+      }
+    ]
+  })
+}
+
