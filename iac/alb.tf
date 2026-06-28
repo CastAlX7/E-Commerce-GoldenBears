@@ -23,7 +23,7 @@ resource "aws_lb" "ecs_alb" {
 
 resource "aws_lb_target_group" "main" {
   name        = "${var.project_name}-tg-${terraform.workspace}"
-  port        = 8080
+  port        = 8000
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = aws_vpc.main.id
@@ -47,7 +47,7 @@ resource "aws_lb_target_group" "main" {
 
 resource "aws_lb_listener" "main" {
   load_balancer_arn = aws_lb.ecs_alb.arn
-  port              = 8080
+  port              = 8000
   protocol          = "HTTP"
 
   default_action {

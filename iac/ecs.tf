@@ -32,8 +32,8 @@ resource "aws_ecs_task_definition" "main" {
     readonlyRootFilesystem = true
 
     portMappings = [{
-      containerPort = 8080
-      hostPort      = 8080
+      containerPort = 8000
+      hostPort      = 8000
       protocol      = "tcp"
     }]
   }])
@@ -58,7 +58,7 @@ resource "aws_ecs_service" "main" {
   load_balancer {
     target_group_arn = aws_lb_target_group.main.arn
     container_name   = "web"
-    container_port   = 8080
+    container_port   = 8000
   }
 
   network_configuration {
