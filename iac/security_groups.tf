@@ -172,7 +172,7 @@ resource "aws_vpc_security_group_egress_rule" "rds_proxy_to_aurora" {
 
 resource "aws_security_group" "aurora" {
   name        = "${var.project_name}-aurora-sg-${terraform.workspace}"
-  description = "Security group del clúster Aurora PostgreSQL"
+  description = "Security group del cluster Aurora PostgreSQL"
   vpc_id      = aws_vpc.main.id
 
   tags = {
