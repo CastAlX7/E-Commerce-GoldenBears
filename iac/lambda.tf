@@ -82,6 +82,7 @@ resource "aws_lambda_function" "lambda_comprobantes" {
   handler                        = "handler.lambda_handler"
   timeout                        = 60
   reserved_concurrent_executions = 10
+  kms_key_arn                    = aws_kms_key.shared.arn
 
   vpc_config {
     subnet_ids         = [aws_subnet.private_app_a.id, aws_subnet.private_app_b.id]
