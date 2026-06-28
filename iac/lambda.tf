@@ -124,7 +124,7 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda_billing" {
 # Nueva config - Perfil de firma con AWS Signer
 resource "aws_signer_signing_profile" "lambda_inventario" {
   platform_id = "AWSLambda-SHA384-ECDSA"
-  name        = "${var.project_name}-inventory-${terraform.workspace}"
+  name        = replace("${var.project_name}inventory${terraform.workspace}", "-", "")
 
   signature_validity_period {
     value = 5
@@ -155,7 +155,7 @@ resource "aws_lambda_code_signing_config" "lambda_inventario" {
 # Perfil de firma para lambda_comprobantes
 resource "aws_signer_signing_profile" "lambda_comprobantes" {
   platform_id = "AWSLambda-SHA384-ECDSA"
-  name        = "${var.project_name}-billing-${terraform.workspace}"
+  name        = replace("${var.project_name}billing${terraform.workspace}", "-", "")
 
   signature_validity_period {
     value = 5
