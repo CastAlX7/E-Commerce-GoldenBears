@@ -27,7 +27,8 @@ resource "aws_ecs_task_definition" "main" {
     name      = "web"
     image     = "nginx:latest"
     essential = true
-
+    
+    # Forzar el sistema de archivos raíz a solo lectura
     readonlyRootFilesystem = true
 
     portMappings = [{
@@ -35,18 +36,6 @@ resource "aws_ecs_task_definition" "main" {
       hostPort      = 8000
       protocol      = "tcp"
     }]
-
-    environment = [
-      { name = "ENVIRONMENT",  value = terraform.workspace },
-      { name = "PROJECT_NAME", value = var.project_name },
-    ]
-
-    secrets = [
-      {
-        name      = "CULQI_SECRET_KEY"
-        valueFrom = "${aws_secretsmanager_secret.culqi_credentials.arn}:secret_key::"
-      }
-    ]
   }])
 
   tags = {
@@ -84,6 +73,4 @@ resource "aws_ecs_service" "main" {
     Project     = var.project_name
     ManagedBy   = "Terraform"
   }
-
-  depends_on = [aws_lb_listener.main]
 }
