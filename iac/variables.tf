@@ -1,25 +1,27 @@
+variable "enable_dnssec" {
+  type        = bool
+  description = "Habilita DNSSEC en la hosted zone. Requiere que los NS del registrar ya apunten a Route53 antes de activarlo."
+  default     = false
+}
+
 variable "region" {
   type        = string
   description = "Región AWS principal"
-  default     = "us-east-1"
 }
 
 variable "project_name" {
   type        = string
   description = "Nombre del proyecto, usado como prefijo en recursos"
-  default     = "golden-bears"
 }
 
 variable "domain_name" {
   type        = string
   description = "Dominio principal del marketplace"
-  default     = "goldenbears.com"
 }
 
 variable "vpc_cidr" {
   type        = string
   description = "Bloque CIDR de la VPC"
-  default     = "10.0.0.0/16"
 }
 
 # --- Variables por entorno (sin default, se inyectan por .tfvars) ---
@@ -84,32 +86,8 @@ variable "log_retention_days" {
   description = "Días de retención en CloudWatch Logs"
 }
 
-# --- Sensibles: inyectar vía -var o TF_VAR_ ---
-
 variable "redis_auth_token" {
   type        = string
   sensitive   = true
   description = "Token de autenticación para Redis (TLS)"
-}
-
-# --- Recursos externos pre-existentes en AWS (no gestionados por este código) ---
-
-variable "log_bucket_name" {
-  type        = string
-  description = "Bucket S3 externo para logs de acceso (pre-existente)"
-}
-
-variable "event_queue_arn" {
-  type        = string
-  description = "ARN de cola SQS externa para notificaciones S3 (pre-existente)"
-}
-
-variable "acm_certificate_arn" {
-  type        = string
-  description = "ARN del certificado ACM en us-east-1 para CloudFront (pre-existente)"
-}
-
-variable "route53_query_log_group_arn" {
-  type        = string
-  description = "ARN del log group de CloudWatch en us-east-1 para Route53 query logs"
 }
