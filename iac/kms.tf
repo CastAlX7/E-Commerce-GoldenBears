@@ -2,6 +2,7 @@ resource "aws_kms_key" "shared" {
   description             = "CMK compartida para Golden Bears: Secrets Manager, Aurora, ElastiCache, S3, CloudWatch Logs"
   deletion_window_in_days = 7
   enable_key_rotation     = true
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -70,20 +71,10 @@ resource "aws_kms_key" "shared" {
           "kms:GenerateDataKey"
         ]
         Resource = "*"
-      },
-      {
-        Sid    = "AllowELBAccessLogs"
-        Effect = "Allow"
-        Principal = {
-          AWS = data.aws_elb_service_account.main.arn
-        }
-        Action = [
-          "kms:GenerateDataKey"
-        ]
-        Resource = "*"
       }
     ]
   })
+
   tags = {
     Name        = "${var.project_name}-cmk-shared-${terraform.workspace}"
     Environment = terraform.workspace
@@ -91,14 +82,20 @@ resource "aws_kms_key" "shared" {
     ManagedBy   = "Terraform"
   }
 }
+
 resource "aws_kms_alias" "shared" {
   name          = "alias/${var.project_name}-shared-${terraform.workspace}"
   target_key_id = aws_kms_key.shared.key_id
 }
-resource "aws_kms_key" "waf" {
-  description             = "CMK para WAF logs delivery - ${var.project_name}"
-  deletion_window_in_days = 7
-  enable_key_rotation     = true
+
+# Clave dedicada para DNSSEC de Route53 — requiere ECC_NIST_P256 en us-east-1
+resource "aws_kms_key" "dnssec" {
+  provider                 = aws.us_east_1
+  description              = "KMS para DNSSEC de Route53 - ${var.domain_name}"
+  customer_master_key_spec = "ECC_NIST_P256"
+  key_usage                = "SIGN_VERIFY"
+  deletion_window_in_days  = 7
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -112,30 +109,31 @@ resource "aws_kms_key" "waf" {
         Resource = "*"
       },
       {
-        Sid    = "AllowWAFLogsDelivery"
+        Sid    = "AllowRoute53DNSSEC"
         Effect = "Allow"
         Principal = {
-          Service = "delivery.logs.amazonaws.com"
+          Service = "dnssec-route53.amazonaws.com"
         }
         Action = [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:ReEncrypt*",
-          "kms:GenerateDataKey*",
-          "kms:DescribeKey"
+          "kms:DescribeKey",
+          "kms:GetPublicKey",
+          "kms:Sign"
         ]
         Resource = "*"
       }
     ]
   })
+
   tags = {
-    Name        = "${var.project_name}-cmk-waf-${terraform.workspace}"
+    Name        = "${var.project_name}-dnssec-key-${terraform.workspace}"
     Environment = terraform.workspace
     Project     = var.project_name
     ManagedBy   = "Terraform"
   }
 }
-resource "aws_kms_alias" "waf" {
-  name          = "alias/${var.project_name}-waf-${terraform.workspace}"
-  target_key_id = aws_kms_key.waf.key_id
+
+resource "aws_kms_alias" "dnssec" {
+  provider      = aws.us_east_1
+  name          = "alias/${var.project_name}-dnssec-${terraform.workspace}"
+  target_key_id = aws_kms_key.dnssec.key_id
 }
