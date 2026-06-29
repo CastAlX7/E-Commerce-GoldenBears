@@ -248,6 +248,7 @@ resource "aws_iam_role" "lambda_inventario" {
 }
 
 resource "aws_iam_role_policy" "lambda_inventario" {
+  # checkov:skip=CKV_AWS_355:DescribeNetworkInterfaces requiere Resource '*' por diseno de AWS API para Lambdas en VPC.
   name = "${var.project_name}-lambda-inventory-policy-${terraform.workspace}"
   role = aws_iam_role.lambda_inventario.id
 
