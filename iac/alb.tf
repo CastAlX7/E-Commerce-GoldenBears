@@ -21,13 +21,9 @@ resource "aws_lb" "ecs_alb" {
     Project     = var.project_name
     ManagedBy   = "Terraform"
   }
-
-  depends_on = [aws_s3_bucket_policy.alb_logs]
 }
 
 resource "aws_lb_target_group" "main" {
-
-  # checkov:skip=CKV_AWS_378: El ALB es interno y se accede de forma segura via VPC Link desde API Gateway. El trafico interno fluye sobre HTTP en el puerto 8000 hacia los contenedores ECS Fargate para evitar la sobrecarga de gestionar TLS en el backend.
   name        = "${var.project_name}-tg-${terraform.workspace}"
   port        = 8000
   protocol    = "HTTP"
@@ -52,7 +48,6 @@ resource "aws_lb_target_group" "main" {
 }
 
 resource "aws_lb_listener" "main" {
-    # checkov:skip=CKV_AWS_378: El ALB es interno y se accede de forma segura via VPC Link desde API Gateway. El puerto 8000 usa HTTP en la red privada de la VPC.
   load_balancer_arn = aws_lb.ecs_alb.arn
   port              = 8000
   protocol          = "HTTP"
