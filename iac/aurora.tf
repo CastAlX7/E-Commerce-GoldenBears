@@ -36,7 +36,7 @@ resource "aws_rds_cluster" "aurora" {
   cluster_identifier              = "${var.project_name}-aurora-cluster-${terraform.workspace}"
   engine                          = "aurora-postgresql"
   engine_mode                     = "provisioned"
-  engine_version                  = "15.8"
+  engine_version                  = "15.4"
   database_name                   = "goldenbearsdb"
   master_username                 = "dbadmin"
   manage_master_user_password     = true
