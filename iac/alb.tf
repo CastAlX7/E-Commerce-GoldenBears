@@ -21,6 +21,8 @@ resource "aws_lb" "ecs_alb" {
     Project     = var.project_name
     ManagedBy   = "Terraform"
   }
+
+  depends_on = [aws_s3_bucket_policy.alb_logs]
 }
 
 resource "aws_lb_target_group" "main" {
@@ -53,13 +55,8 @@ resource "aws_lb_listener" "main" {
   protocol          = "HTTP"
 
   default_action {
-    type = "redirect"
-
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
-    }
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
   }
 
   tags = {
