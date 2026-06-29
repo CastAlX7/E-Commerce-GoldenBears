@@ -1,21 +1,3 @@
-data "archive_file" "lambda_inventario" {
-  type        = "zip"
-  output_path = "${path.module}/lambdas/lambda_inventario.zip"
-  source {
-    content  = file("${path.module}/lambdas/lambda_inventario.py")
-    filename = "handler.py"
-  }
-}
-
-data "archive_file" "lambda_comprobantes" {
-  type        = "zip"
-  output_path = "${path.module}/lambdas/lambda_comprobantes.zip"
-  source {
-    content  = file("${path.module}/lambdas/lambda_comprobantes.py")
-    filename = "handler.py"
-  }
-}
-
 resource "aws_cloudwatch_log_group" "lambda_inventory" {
   name              = "/aws/lambda/${var.project_name}-inventory-${terraform.workspace}"
   retention_in_days = var.log_retention_days
@@ -42,16 +24,16 @@ resource "aws_cloudwatch_log_group" "lambda_billing" {
   }
 }
 
+# CRÍTICO: REEMPLAZAR placeholder.zip CON EL ARTIFACT REAL DE LA LAMBDA ANTES DE APLICAR EN PRODUCCIÓN
 resource "aws_lambda_function" "lambda_inventario" {
-  # checkov:skip=CKV_AWS_115: reserved_concurrent_executions no se configura en dev porque la cuenta no tiene suficiente concurrencia libre
-  filename                       = data.archive_file.lambda_inventario.output_path
-  source_code_hash               = data.archive_file.lambda_inventario.output_base64sha256
+  filename                       = "${path.module}/placeholder.zip"
   function_name                  = "${var.project_name}-inventory-${terraform.workspace}"
   role                           = aws_iam_role.lambda_inventario.arn
   runtime                        = "python3.12"
   handler                        = "handler.lambda_handler"
-  timeout     = 30
-  kms_key_arn = aws_kms_key.shared.arn
+  timeout                        = 30
+  reserved_concurrent_executions = 10
+  kms_key_arn                    = aws_kms_key.shared.arn
 
   vpc_config {
     subnet_ids         = [aws_subnet.private_lambda_a.id]
@@ -68,11 +50,8 @@ resource "aws_lambda_function" "lambda_inventario" {
 
   environment {
     variables = {
-      ENVIRONMENT      = terraform.workspace
-      PROJECT_NAME     = var.project_name
-      DB_PROXY_ENDPOINT = aws_db_proxy.aurora_proxy.endpoint
-      DB_NAME          = "goldenbearsdb"
-      DB_USER          = "inventory_user"
+      ENVIRONMENT  = terraform.workspace
+      PROJECT_NAME = var.project_name
     }
   }
 
@@ -94,22 +73,22 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda_inventory" {
   batch_size       = 10
 }
 
+# CRÍTICO: REEMPLAZAR placeholder.zip CON EL ARTIFACT REAL DE LA LAMBDA ANTES DE APLICAR EN PRODUCCIÓN
 resource "aws_lambda_function" "lambda_comprobantes" {
-  # checkov:skip=CKV_AWS_115: reserved_concurrent_executions no se configura en dev porque la cuenta no tiene suficiente concurrencia libre
-  filename                       = data.archive_file.lambda_comprobantes.output_path
-  source_code_hash               = data.archive_file.lambda_comprobantes.output_base64sha256
+  filename                       = "${path.module}/placeholder.zip"
   function_name                  = "${var.project_name}-billing-${terraform.workspace}"
   role                           = aws_iam_role.lambda_comprobantes.arn
   runtime                        = "python3.12"
   handler                        = "handler.lambda_handler"
-  timeout     = 60
-  kms_key_arn = aws_kms_key.shared.arn
+  timeout                        = 60
+  reserved_concurrent_executions = 10
+  kms_key_arn                    = aws_kms_key.shared.arn
 
   vpc_config {
     subnet_ids         = [aws_subnet.private_app_a.id, aws_subnet.private_app_b.id]
     security_group_ids = [aws_security_group.lambda_comprobantes.id]
   }
-
+  
   tracing_config {
     mode = "Active"
   }
@@ -120,10 +99,8 @@ resource "aws_lambda_function" "lambda_comprobantes" {
 
   environment {
     variables = {
-      ENVIRONMENT         = terraform.workspace
-      PROJECT_NAME        = var.project_name
-      NUBEFACT_SECRET_ARN = aws_secretsmanager_secret.nubefact_credentials.arn
-      DOCUMENTAL_BUCKET   = aws_s3_bucket.documental.id
+      ENVIRONMENT  = terraform.workspace
+      PROJECT_NAME = var.project_name
     }
   }
 
@@ -148,7 +125,7 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda_billing" {
 # Nueva config - Perfil de firma con AWS Signer
 resource "aws_signer_signing_profile" "lambda_inventario" {
   platform_id = "AWSLambda-SHA384-ECDSA"
-  name_prefix = replace("${var.project_name}inv${terraform.workspace}", "-", "")
+  name        = replace("${var.project_name}inventory${terraform.workspace}", "-", "")
 
   signature_validity_period {
     value = 5
@@ -170,7 +147,7 @@ resource "aws_lambda_code_signing_config" "lambda_inventario" {
   }
 
   policies {
-    untrusted_artifact_on_deployment = "Warn"
+    untrusted_artifact_on_deployment = "Enforce"  # Bloquea despliegues no firmados o alterados
   }
 
   description = "${var.project_name}-inventory-${terraform.workspace} code signing config"
@@ -179,7 +156,7 @@ resource "aws_lambda_code_signing_config" "lambda_inventario" {
 # Perfil de firma para lambda_comprobantes
 resource "aws_signer_signing_profile" "lambda_comprobantes" {
   platform_id = "AWSLambda-SHA384-ECDSA"
-  name_prefix = replace("${var.project_name}bill${terraform.workspace}", "-", "")
+  name        = replace("${var.project_name}billing${terraform.workspace}", "-", "")
 
   signature_validity_period {
     value = 5
@@ -201,7 +178,7 @@ resource "aws_lambda_code_signing_config" "lambda_comprobantes" {
   }
 
   policies {
-    untrusted_artifact_on_deployment = "Warn"
+    untrusted_artifact_on_deployment = "Enforce"
   }
 
   description = "${var.project_name}-billing-${terraform.workspace} code signing config"
