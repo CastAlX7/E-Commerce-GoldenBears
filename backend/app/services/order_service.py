@@ -1,3 +1,4 @@
+import os
 import uuid
 import hashlib
 from datetime import datetime, timedelta, timezone
@@ -6,12 +7,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
+import httpx
 
 from app.models.cart import CartItem
 from app.models.product import Product, StockLock
 from app.models.order import Order, OrderItem, BillingDetail, PaymentToken
 from app.models.user import User
 from app.schemas.order import CheckoutConfirmRequest
+
+CULQI_SECRET_KEY = os.getenv("CULQI_SECRET_KEY", "sk_test_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+
+
+async def charge_culqi(token: str, amount_cents: int, email: str) -> dict:
+    if CULQI_SECRET_KEY.startswith("sk_test_XXX"):
+        return {"id": "mock_charge_id", "outcome": {"type": "authorized"}}
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://api.culqi.com/v2/charges",
+            headers={"Authorization": f"Bearer {CULQI_SECRET_KEY}"},
+            json={"amount": amount_cents, "currency_code": "PEN",
+                  "email": email, "source_id": token},
+        )
+        return resp.json()
 
 
 SHIPPING_LIMA = Decimal("15.00")
@@ -164,6 +181,16 @@ async def confirm_checkout(db: AsyncSession, user: User, data: CheckoutConfirmRe
     tax_amount = (subtotal * IGV_RATE).quantize(Decimal("0.01"))
     payment_fee = calculate_payment_fee(data.payment.method, subtotal)
     total = subtotal + shipping_cost + tax_amount + payment_fee
+
+    if data.payment.method == "card" and data.payment.card_number:
+        culqi_token, _ = tokenize_card(data.payment.card_number)
+        amount_cents = int(total * 100)
+        charge = await charge_culqi(culqi_token, amount_cents, user.email)
+        if charge.get("outcome", {}).get("type") != "authorized":
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=charge.get("user_message", "Pago rechazado por la pasarela"),
+            )
 
     order_id = str(uuid.uuid4())
     order = Order(

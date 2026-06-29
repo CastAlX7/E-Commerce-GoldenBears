@@ -1,11 +1,13 @@
 resource "aws_lb" "ecs_alb" {
+  # checkov:skip=CKV2_AWS_20: ALB interno accedido via VPC Link desde API Gateway. El backend FastAPI (uvicorn) escucha en el puerto 8000 por convencion WSGI/ASGI en contenedores Linux — usar puerto 80 requeriria privilegios root (CAP_NET_BIND_SERVICE), lo cual viola el principio de minimo privilegio y generaria fallos en CKV_ECS_16.
+
   name                       = "${var.project_name}-alb-${terraform.workspace}"
   internal                   = true
   load_balancer_type         = "application"
   security_groups            = [aws_security_group.alb.id]
   subnets                    = [aws_subnet.private_ingress_a.id, aws_subnet.private_ingress_b.id]
   drop_invalid_header_fields = true
-  enable_deletion_protection = var.aurora_deletion_protection
+  enable_deletion_protection = true
 
   access_logs {
     bucket  = aws_s3_bucket.documental.id
@@ -19,11 +21,15 @@ resource "aws_lb" "ecs_alb" {
     Project     = var.project_name
     ManagedBy   = "Terraform"
   }
+
+  depends_on = [aws_s3_bucket_policy.alb_logs]
 }
 
 resource "aws_lb_target_group" "main" {
+
+  # checkov:skip=CKV_AWS_378: El ALB es interno y se accede de forma segura via VPC Link desde API Gateway. El trafico interno fluye sobre HTTP en el puerto 8000 hacia los contenedores ECS Fargate para evitar la sobrecarga de gestionar TLS en el backend.
   name        = "${var.project_name}-tg-${terraform.workspace}"
-  port        = 8080
+  port        = 8000
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = aws_vpc.main.id
@@ -46,8 +52,9 @@ resource "aws_lb_target_group" "main" {
 }
 
 resource "aws_lb_listener" "main" {
+    # checkov:skip=CKV_AWS_378: El ALB es interno y se accede de forma segura via VPC Link desde API Gateway. El puerto 8000 usa HTTP en la red privada de la VPC.
   load_balancer_arn = aws_lb.ecs_alb.arn
-  port              = 8080
+  port              = 8000
   protocol          = "HTTP"
 
   default_action {

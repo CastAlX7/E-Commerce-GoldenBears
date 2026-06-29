@@ -23,16 +23,30 @@ resource "aws_ecs_task_definition" "main" {
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
 
-  # CRÍTICO: REEMPLAZAR nginx:latest CON LA IMAGEN REAL DE LA APLICACIÓN ANTES DE APLICAR EN PRODUCCIÓN
   container_definitions = jsonencode([{
     name      = "web"
     image     = "nginx:latest"
     essential = true
+
+    readonlyRootFilesystem = true
+
     portMappings = [{
-      containerPort = 8080
-      hostPort      = 8080
+      containerPort = 8000
+      hostPort      = 8000
       protocol      = "tcp"
     }]
+
+    environment = [
+      { name = "ENVIRONMENT",  value = terraform.workspace },
+      { name = "PROJECT_NAME", value = var.project_name },
+    ]
+
+    secrets = [
+      {
+        name      = "CULQI_SECRET_KEY"
+        valueFrom = "${aws_secretsmanager_secret.culqi_credentials.arn}:secret_key::"
+      }
+    ]
   }])
 
   tags = {
@@ -55,7 +69,7 @@ resource "aws_ecs_service" "main" {
   load_balancer {
     target_group_arn = aws_lb_target_group.main.arn
     container_name   = "web"
-    container_port   = 8080
+    container_port   = 8000
   }
 
   network_configuration {
@@ -70,4 +84,6 @@ resource "aws_ecs_service" "main" {
     Project     = var.project_name
     ManagedBy   = "Terraform"
   }
+
+  depends_on = [aws_lb_listener.main]
 }

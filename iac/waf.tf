@@ -2,7 +2,7 @@ resource "aws_wafv2_web_acl" "frontend" {
   provider    = aws.us_east_1
   name        = "${var.project_name}-frontend-waf-${terraform.workspace}"
   scope       = "CLOUDFRONT"
-  description = "WAF para la distribución CloudFront del marketplace Golden Bears"
+  description = "WAF para la distribucion CloudFront del marketplace Golden Bears"
 
   default_action {
     allow {}
@@ -68,6 +68,8 @@ resource "aws_wafv2_web_acl" "frontend" {
 
 resource "aws_wafv2_web_acl_logging_configuration" "frontend" {
   provider                = aws.us_east_1
-  log_destination_configs = ["arn:aws:s3:::${var.log_bucket_name}"]
+  log_destination_configs = [aws_s3_bucket.waf_logs.arn]
   resource_arn            = aws_wafv2_web_acl.frontend.arn
+
+  depends_on = [aws_s3_bucket_policy.waf_logs]
 }

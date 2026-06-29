@@ -1,0 +1,22 @@
+---
+- name: Generar backend/.env desde variables de entorno
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Obtener secret de DB desde AWS Secrets Manager
+      community.aws.aws_secret:
+        name: "golden-bears-app-db-credentials-{{ workspace }}"
+        region: "{{ aws_region }}"
+      register: db_secret
+
+    - name: Obtener secret de Gmail desde AWS Secrets Manager
+      community.aws.aws_secret:
+        name: "golden-bears-app-gmail-{{ workspace }}"
+        region: "{{ aws_region }}"
+      register: gmail_secret
+
+    - name: Generar backend/.env
+      ansible.builtin.template:
+        src: templates/env.j2
+        dest: "../../backend/.env"
+        mode: '0600'

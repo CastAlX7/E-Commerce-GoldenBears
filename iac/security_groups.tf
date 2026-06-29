@@ -26,10 +26,10 @@ resource "aws_security_group" "vpc_link" {
 
 resource "aws_vpc_security_group_egress_rule" "vpc_link_to_alb" {
   security_group_id            = aws_security_group.vpc_link.id
-  description                  = "Egress al ALB en puerto 8080"
+  description                  = "Egress al ALB en puerto 8000"
   ip_protocol                  = "tcp"
-  from_port                    = 8080
-  to_port                      = 8080
+  from_port                    = 8000
+  to_port                      = 8000
   referenced_security_group_id = aws_security_group.alb.id
 }
 
@@ -50,19 +50,19 @@ resource "aws_security_group" "alb" {
 
 resource "aws_vpc_security_group_ingress_rule" "alb_from_vpc_link" {
   security_group_id            = aws_security_group.alb.id
-  description                  = "Ingress desde VPC Link en puerto 8080"
+  description                  = "Ingress desde VPC Link en puerto 8000"
   ip_protocol                  = "tcp"
-  from_port                    = 8080
-  to_port                      = 8080
+  from_port                    = 8000
+  to_port                      = 8000
   referenced_security_group_id = aws_security_group.vpc_link.id
 }
 
 resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
   security_group_id            = aws_security_group.alb.id
-  description                  = "Egress al ECS en puerto 8080"
+  description                  = "Egress al ECS en puerto 8000"
   ip_protocol                  = "tcp"
-  from_port                    = 8080
-  to_port                      = 8080
+  from_port                    = 8000
+  to_port                      = 8000
   referenced_security_group_id = aws_security_group.ecs.id
 }
 
@@ -83,10 +83,10 @@ resource "aws_security_group" "ecs" {
 
 resource "aws_vpc_security_group_ingress_rule" "ecs_from_alb" {
   security_group_id            = aws_security_group.ecs.id
-  description                  = "Ingress desde ALB en puerto 8080"
+  description                  = "Ingress desde ALB en puerto 8000"
   ip_protocol                  = "tcp"
-  from_port                    = 8080
-  to_port                      = 8080
+  from_port                    = 8000
+  to_port                      = 8000
   referenced_security_group_id = aws_security_group.alb.id
 }
 
@@ -172,7 +172,7 @@ resource "aws_vpc_security_group_egress_rule" "rds_proxy_to_aurora" {
 
 resource "aws_security_group" "aurora" {
   name        = "${var.project_name}-aurora-sg-${terraform.workspace}"
-  description = "Security group del clúster Aurora PostgreSQL"
+  description = "Security group del cluster Aurora PostgreSQL"
   vpc_id      = aws_vpc.main.id
 
   tags = {
@@ -243,6 +243,38 @@ resource "aws_vpc_security_group_egress_rule" "lambda_inventario_to_rds_proxy" {
 resource "aws_vpc_security_group_egress_rule" "lambda_inventario_to_vpc_endpoints" {
   security_group_id            = aws_security_group.lambda_inventario.id
   description                  = "Egress a VPC Endpoints (HTTPS)"
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
+  referenced_security_group_id = aws_security_group.vpc_endpoints.id
+}
+
+# --- Lambda de comprobantes----
+resource "aws_security_group" "lambda_comprobantes" {
+  name        = "${var.project_name}-lambda-comprobantes-sg-${terraform.workspace}"
+  description = "Security group de Lambda Comprobantes"
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name        = "${var.project_name}-lambda-comprobantes-sg-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_vpc_security_group_egress_rule" "lambda_comprobantes_to_internet_https" {
+  security_group_id = aws_security_group.lambda_comprobantes.id
+  description       = "Salida HTTPS a Internet via NAT"
+  ip_protocol       = "tcp"
+  from_port         = 443
+  to_port           = 443
+  cidr_ipv4         = "0.0.0.0/0"
+}
+
+resource "aws_vpc_security_group_egress_rule" "lambda_comprobantes_to_vpc_endpoints" {
+  security_group_id            = aws_security_group.lambda_comprobantes.id
+  description                  = "Salida HTTPS a VPC Endpoints"
   ip_protocol                  = "tcp"
   from_port                    = 443
   to_port                      = 443
