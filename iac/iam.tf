@@ -137,29 +137,6 @@ resource "aws_iam_role_policy_attachment" "ecs_task_exec" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-resource "aws_iam_role_policy" "ecs_task_exec_secrets" {
-  name = "${var.project_name}-ecs-exec-secrets-policy-${terraform.workspace}"
-  role = aws_iam_role.ecs_task_exec.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "AllowReadCulqiSecret"
-        Effect = "Allow"
-        Action = "secretsmanager:GetSecretValue"
-        Resource = aws_secretsmanager_secret.culqi_credentials.arn
-      },
-      {
-        Sid      = "AllowKMSDecryptForSecrets"
-        Effect   = "Allow"
-        Action   = "kms:Decrypt"
-        Resource = aws_kms_key.shared.arn
-      }
-    ]
-  })
-}
-
 # --- ECS Task (permisos de negocio) ---
 
 resource "aws_iam_role" "ecs_task" {
@@ -207,12 +184,9 @@ resource "aws_iam_role_policy" "ecs_task" {
         Resource = aws_sns_topic.orders_topic.arn
       },
       {
-        Effect = "Allow"
-        Action = "secretsmanager:GetSecretValue"
-        Resource = [
-          aws_secretsmanager_secret.app_db_credentials.arn,
-          aws_secretsmanager_secret.culqi_credentials.arn,
-        ]
+        Effect   = "Allow"
+        Action   = "secretsmanager:GetSecretValue"
+        Resource = aws_secretsmanager_secret.app_db_credentials.arn
       },
       {
         Effect   = "Allow"
@@ -248,7 +222,6 @@ resource "aws_iam_role" "lambda_inventario" {
 }
 
 resource "aws_iam_role_policy" "lambda_inventario" {
-  # checkov:skip=CKV_AWS_355:DescribeNetworkInterfaces requiere Resource '*' por diseno de AWS API para Lambdas en VPC.
   name = "${var.project_name}-lambda-inventory-policy-${terraform.workspace}"
   role = aws_iam_role.lambda_inventario.id
 
@@ -259,9 +232,18 @@ resource "aws_iam_role_policy" "lambda_inventario" {
         Effect = "Allow"
         Action = [
           "ec2:CreateNetworkInterface",
-          "ec2:DeleteNetworkInterface",
-          "ec2:DescribeNetworkInterfaces"
+          "ec2:DeleteNetworkInterface"
         ]
+        Resource = "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:network-interface/*"
+        Condition = {
+          StringEquals = {
+            "ec2:Vpc" = aws_vpc.main.arn
+          }
+        }
+      },
+      {
+        Effect   = "Allow"
+        Action   = "ec2:DescribeNetworkInterfaces"
         Resource = "*"
       },
       {
@@ -273,11 +255,6 @@ resource "aws_iam_role_policy" "lambda_inventario" {
           "sqs:ChangeMessageVisibility"
         ]
         Resource = aws_sqs_queue.inventory_queue.arn
-      },
-      {
-        Effect   = "Allow"
-        Action   = "sqs:SendMessage"
-        Resource = aws_sqs_queue.inventory_dlq.arn
       },
       {
         Effect   = "Allow"
@@ -331,26 +308,12 @@ resource "aws_iam_role_policy" "lambda_comprobantes" {
       {
         Effect = "Allow"
         Action = [
-          "ec2:CreateNetworkInterface",
-          "ec2:DeleteNetworkInterface",
-          "ec2:DescribeNetworkInterfaces"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
           "sqs:ReceiveMessage",
           "sqs:DeleteMessage",
           "sqs:GetQueueAttributes",
           "sqs:ChangeMessageVisibility"
         ]
         Resource = aws_sqs_queue.billing_queue.arn
-      },
-      {
-        Effect   = "Allow"
-        Action   = "sqs:SendMessage"
-        Resource = aws_sqs_queue.billing_dlq.arn
       },
       {
         Effect = "Allow"
@@ -430,3 +393,4 @@ resource "aws_iam_role_policy" "s3_replication_documental" {
     ]
   })
 }
+
