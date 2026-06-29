@@ -50,13 +50,22 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# --- Componentes del Único NAT Gateway (Consolidado) ---
-
 resource "aws_eip" "nat_a" {
   domain = "vpc"
 
   tags = {
     Name        = "${var.project_name}-eip-nat-a-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_eip" "nat_b" {
+  domain = "vpc"
+
+  tags = {
+    Name        = "${var.project_name}-eip-nat-b-${terraform.workspace}"
     Environment = terraform.workspace
     Project     = var.project_name
     ManagedBy   = "Terraform"
@@ -69,6 +78,18 @@ resource "aws_nat_gateway" "nat_a" {
 
   tags = {
     Name        = "${var.project_name}-nat-a-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_nat_gateway" "nat_b" {
+  allocation_id = aws_eip.nat_b.id
+  subnet_id     = aws_subnet.public_b.id
+
+  tags = {
+    Name        = "${var.project_name}-nat-b-${terraform.workspace}"
     Environment = terraform.workspace
     Project     = var.project_name
     ManagedBy   = "Terraform"
@@ -214,7 +235,7 @@ resource "aws_route_table" "public" {
   }
 }
 
-resource "aws_route_table" "app" {
+resource "aws_route_table" "app_a" {
   vpc_id = aws_vpc.main.id
 
   route {
@@ -224,6 +245,22 @@ resource "aws_route_table" "app" {
 
   tags = {
     Name        = "${var.project_name}-rt-app-a-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_route_table" "app_b" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat_b.id
+  }
+
+  tags = {
+    Name        = "${var.project_name}-rt-app-b-${terraform.workspace}"
     Environment = terraform.workspace
     Project     = var.project_name
     ManagedBy   = "Terraform"
@@ -255,12 +292,12 @@ resource "aws_route_table_association" "public_b" {
 
 resource "aws_route_table_association" "app_a" {
   subnet_id      = aws_subnet.private_app_a.id
-  route_table_id = aws_route_table.app.id
+  route_table_id = aws_route_table.app_a.id
 }
 
 resource "aws_route_table_association" "app_b" {
   subnet_id      = aws_subnet.private_app_b.id
-  route_table_id = aws_route_table.app.id 
+  route_table_id = aws_route_table.app_b.id
 }
 
 resource "aws_route_table_association" "ingress_a" {
