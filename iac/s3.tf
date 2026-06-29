@@ -34,6 +34,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "logs" {
   rule {
     id     = "expire-old-logs"
     status = "Enabled"
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }    
     expiration {
       days = var.log_retention_days
     }
@@ -90,6 +93,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "waf_logs" {
   rule {
     id     = "expire-waf-logs"
     status = "Enabled"
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }    
     expiration {
       days = var.log_retention_days
     }
