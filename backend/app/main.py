@@ -46,3 +46,8 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 @app.get("/")
 async def root():
     return {"message": "Golden Bears API", "docs": "/docs"}
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
