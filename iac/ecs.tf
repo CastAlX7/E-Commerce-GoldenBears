@@ -67,6 +67,10 @@ resource "aws_ecs_service" "main" {
     assign_public_ip = false
   }
 
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
+
   tags = {
     Name        = "${var.project_name}-svc-${terraform.workspace}"
     Environment = terraform.workspace
