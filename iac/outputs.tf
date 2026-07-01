@@ -34,7 +34,4 @@ output "cloudfront_domain_name" {
   value       = aws_cloudfront_distribution.frontend_cdn.domain_name
 }
 
-output "route53_zone_id" {
-  description = "ID de la zona hosted en Route53"
-  value       = aws_route53_zone.main.zone_id
-}
+
