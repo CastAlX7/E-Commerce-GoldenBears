@@ -169,21 +169,6 @@ resource "aws_iam_role_policy" "ecs_task" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "sqs:SendMessage",
-          "sqs:ReceiveMessage",
-          "sqs:DeleteMessage",
-          "sqs:GetQueueAttributes"
-        ]
-        Resource = aws_sqs_queue.inventory_queue.arn
-      },
-      {
-        Effect   = "Allow"
-        Action   = "sns:Publish"
-        Resource = aws_sns_topic.orders_topic.arn
-      },
-      {
         Effect   = "Allow"
         Action   = "secretsmanager:GetSecretValue"
         Resource = aws_secretsmanager_secret.app_db_credentials.arn
@@ -232,14 +217,12 @@ resource "aws_iam_role_policy" "lambda_inventario" {
         Effect = "Allow"
         Action = [
           "ec2:CreateNetworkInterface",
-          "ec2:DeleteNetworkInterface"
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface",
+          "ec2:AssignPrivateIpAddresses",
+          "ec2:UnassignPrivateIpAddresses"
         ]
-        Resource = "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:network-interface/*"
-        Condition = {
-          StringEquals = {
-            "ec2:Vpc" = aws_vpc.main.arn
-          }
-        }
+        Resource = "*"
       },
       {
         Effect   = "Allow"
@@ -257,6 +240,13 @@ resource "aws_iam_role_policy" "lambda_inventario" {
         Resource = aws_sqs_queue.inventory_queue.arn
       },
       {
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage"
+        ]
+        Resource = aws_sqs_queue.inventory_dlq.arn
+      },
+      {
         Effect   = "Allow"
         Action   = "rds-db:connect"
         Resource = "arn:aws:rds-db:${var.region}:${data.aws_caller_identity.current.account_id}:dbuser:${aws_db_proxy.aurora_proxy.id}/inventory_user"
@@ -269,6 +259,14 @@ resource "aws_iam_role_policy" "lambda_inventario" {
           "logs:PutLogEvents"
         ]
         Resource = "${aws_cloudwatch_log_group.lambda_inventory.arn}:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+        ]
+        Resource = aws_kms_key.shared.arn
       }
     ]
   })
@@ -318,6 +316,13 @@ resource "aws_iam_role_policy" "lambda_comprobantes" {
       {
         Effect = "Allow"
         Action = [
+          "sqs:SendMessage"
+        ]
+        Resource = aws_sqs_queue.billing_dlq.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "s3:PutObject",
           "s3:GetObject",
           "s3:PutObjectTagging"
@@ -337,6 +342,25 @@ resource "aws_iam_role_policy" "lambda_comprobantes" {
           "logs:PutLogEvents"
         ]
         Resource = "${aws_cloudwatch_log_group.lambda_billing.arn}:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface",
+          "ec2:AssignPrivateIpAddresses",
+          "ec2:UnassignPrivateIpAddresses"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+        ]
+        Resource = aws_kms_key.shared.arn
       }
     ]
   })
