@@ -26,16 +26,16 @@ resource "aws_cloudwatch_log_group" "lambda_billing" {
 
 # CRÍTICO: REEMPLAZAR placeholder.zip CON EL ARTIFACT REAL DE LA LAMBDA ANTES DE APLICAR EN PRODUCCIÓN
 resource "aws_lambda_function" "lambda_inventario" {
-  filename                       = "${path.module}/lambda_inventario.zip"
-  function_name                  = "${var.project_name}-inventory-${terraform.workspace}"
-  role                           = aws_iam_role.lambda_inventario.arn
-  runtime                        = "python3.12"
-  handler                        = "handler.lambda_handler"
-  timeout                        = 30
+  filename      = "${path.module}/lambda_inventario.zip"
+  function_name = "${var.project_name}-inventory-${terraform.workspace}"
+  role          = aws_iam_role.lambda_inventario.arn
+  runtime       = "python3.12"
+  handler       = "handler.lambda_handler"
+  timeout       = 30
 
-# reserved_concurrent_executions = 10
+  # reserved_concurrent_executions = 10
 
-  kms_key_arn                    = aws_kms_key.shared.arn
+  kms_key_arn = aws_kms_key.shared.arn
 
   depends_on = [
     aws_iam_role_policy.lambda_inventario,
@@ -81,16 +81,16 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda_inventory" {
 
 # CRÍTICO: REEMPLAZAR placeholder.zip CON EL ARTIFACT REAL DE LA LAMBDA ANTES DE APLICAR EN PRODUCCIÓN
 resource "aws_lambda_function" "lambda_comprobantes" {
-  filename                       = "${path.module}/lambda_comprobantes.zip"
-  function_name                  = "${var.project_name}-billing-${terraform.workspace}"
-  role                           = aws_iam_role.lambda_comprobantes.arn
-  runtime                        = "python3.12"
-  handler                        = "handler.lambda_handler"
-  timeout                        = 60
+  filename      = "${path.module}/lambda_comprobantes.zip"
+  function_name = "${var.project_name}-billing-${terraform.workspace}"
+  role          = aws_iam_role.lambda_comprobantes.arn
+  runtime       = "python3.12"
+  handler       = "handler.lambda_handler"
+  timeout       = 60
 
-# reserved_concurrent_executions = 10
+  # reserved_concurrent_executions = 10
 
-  kms_key_arn                    = aws_kms_key.shared.arn
+  kms_key_arn = aws_kms_key.shared.arn
 
   depends_on = [
     aws_iam_role_policy.lambda_comprobantes,
@@ -101,7 +101,7 @@ resource "aws_lambda_function" "lambda_comprobantes" {
     subnet_ids         = [aws_subnet.private_app_a.id, aws_subnet.private_app_b.id]
     security_group_ids = [aws_security_group.lambda_comprobantes.id]
   }
-  
+
   tracing_config {
     mode = "Active"
   }
@@ -162,7 +162,7 @@ resource "aws_lambda_code_signing_config" "lambda_inventario" {
   }
 
   policies {
-    untrusted_artifact_on_deployment = "Warn"  # Warn en lugar de Enforce para permitir placeholders en dev
+    untrusted_artifact_on_deployment = "Warn" # Warn en lugar de Enforce para permitir placeholders en dev
   }
 
   description = "${var.project_name}-inventory-${terraform.workspace} code signing config"

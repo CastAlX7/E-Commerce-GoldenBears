@@ -35,9 +35,9 @@ resource "aws_apigatewayv2_integration" "main" {
 
 resource "aws_apigatewayv2_route" "main" {
   # checkov:skip=CKV_AWS_309: La autenticación y autorización se manejan internamente en los contenedores ECS.
-  api_id    = aws_apigatewayv2_api.main.id
-  route_key = "ANY /{proxy+}"
-  target    = "integrations/${aws_apigatewayv2_integration.main.id}"
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "ANY /{proxy+}"
+  target             = "integrations/${aws_apigatewayv2_integration.main.id}"
   authorization_type = "NONE"
 }
 
