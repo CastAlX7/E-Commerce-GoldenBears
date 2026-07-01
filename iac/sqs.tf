@@ -43,20 +43,36 @@ resource "aws_sqs_queue_policy" "billing_queue_policy" {
   queue_url = aws_sqs_queue.billing_queue.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Sid    = "AllowSNSPublish"
-      Effect = "Allow"
-      Principal = {
-        Service = "sns.amazonaws.com"
-      }
-      Action    = "sqs:SendMessage"
-      Resource  = aws_sqs_queue.billing_queue.arn
-      Condition = {
-        ArnEquals = {
-          "aws:SourceArn" = aws_sns_topic.orders_topic.arn
+    Statement = [
+      {
+        Sid    = "AllowSNSPublish"
+        Effect = "Allow"
+        Principal = {
+          Service = "sns.amazonaws.com"
+        }
+        Action    = "sqs:SendMessage"
+        Resource  = aws_sqs_queue.billing_queue.arn
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_sns_topic.orders_topic.arn
+          }
+        }
+      },
+      {
+        Sid    = "AllowS3Notifications"
+        Effect = "Allow"
+        Principal = {
+          Service = "s3.amazonaws.com"
+        }
+        Action    = "sqs:SendMessage"
+        Resource  = aws_sqs_queue.billing_queue.arn
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_s3_bucket.documental.arn
+          }
         }
       }
-    }]
+    ]
   })
 }
 
