@@ -7,7 +7,7 @@ resource "aws_lb" "ecs_alb" {
   security_groups            = [aws_security_group.alb.id]
   subnets                    = [aws_subnet.private_ingress_a.id, aws_subnet.private_ingress_b.id]
   drop_invalid_header_fields = true
-  enable_deletion_protection = true
+  enable_deletion_protection = terraform.workspace == "prod" ? true : false
 
   access_logs {
     bucket  = aws_s3_bucket.documental.id
