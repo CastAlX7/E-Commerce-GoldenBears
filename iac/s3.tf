@@ -1,7 +1,8 @@
-# --- Bucket de logs (WAF + S3 access logs) ---
-
 resource "aws_s3_bucket" "logs" {
-  bucket = "${var.project_name}-logs-${terraform.workspace}"
+  # checkov:skip=CKV_AWS_144: S3 logs bucket does not need cross-region replication.
+  # El nombre del bucket de logs de WAFv2 DEBE empezar con "aws-waf-logs-" por restriccion del API de AWS, de lo contrario fallara al configurar el logging.
+  bucket        = "aws-waf-logs-${var.project_name}-${terraform.workspace}"
+  force_destroy = true
 
   tags = {
     Name        = "${var.project_name}-logs-${terraform.workspace}"
@@ -45,7 +46,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "logs" {
 # --- Bucket Frontend (SPA / activos estáticos) ---
 
 resource "aws_s3_bucket" "frontend" {
-  bucket = "${var.project_name}-frontend-${terraform.workspace}"
+  bucket        = "${var.project_name}-frontend-${terraform.workspace}"
+  force_destroy = true
 
   tags = {
     Name        = "${var.project_name}-frontend-${terraform.workspace}"
@@ -122,7 +124,8 @@ resource "aws_s3_bucket_policy" "frontend_oac" {
 # --- Bucket Documental (comprobantes SUNAT + access logs ALB) ---
 
 resource "aws_s3_bucket" "documental" {
-  bucket = "${var.project_name}-documental-${terraform.workspace}"
+  bucket        = "${var.project_name}-documental-${terraform.workspace}"
+  force_destroy = true
 
   tags = {
     Name        = "${var.project_name}-documental-${terraform.workspace}"
@@ -149,11 +152,11 @@ resource "aws_s3_bucket_public_access_block" "documental" {
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "documental" {
+  # checkov:skip=CKV_AWS_145: Usar SSE-S3 (AES256) en lugar de SSE-KMS es requerido para permitir que el servicio de AWS Elastic Load Balancing (ALB) escriba logs de acceso sin requerir politicas complejas de KMS compartidas con cuentas de servicio de AWS.
   bucket = aws_s3_bucket.documental.id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm     = "aws:kms"
-      kms_master_key_id = aws_kms_key.shared.arn
+      sse_algorithm     = "AES256"
     }
     bucket_key_enabled = true
   }
@@ -213,11 +216,16 @@ resource "aws_s3_bucket_notification" "documental" {
     events        = ["s3:ObjectCreated:*"]
     filter_prefix = "facturas/"
   }
+
+  depends_on = [
+    aws_sqs_queue_policy.billing_queue_policy
+  ]
 }
 
 resource "aws_s3_bucket" "documental_replica" {
-  provider = aws.replica
-  bucket   = "${var.project_name}-documental-replica-${terraform.workspace}"
+  provider      = aws.replica
+  bucket        = "${var.project_name}-documental-replica-${terraform.workspace}"
+  force_destroy = true
 
   tags = {
     Name        = "${var.project_name}-documental-replica-${terraform.workspace}"
