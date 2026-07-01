@@ -159,6 +159,15 @@ resource "aws_vpc_security_group_ingress_rule" "rds_proxy_from_lambda_inventario
   referenced_security_group_id = aws_security_group.lambda_inventario.id
 }
 
+resource "aws_vpc_security_group_ingress_rule" "rds_proxy_from_lambda_comprobantes" {
+  security_group_id            = aws_security_group.rds_proxy.id
+  description                  = "Ingress desde Lambda Comprobantes (PostgreSQL)"
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  referenced_security_group_id = aws_security_group.lambda_comprobantes.id
+}
+
 resource "aws_vpc_security_group_egress_rule" "rds_proxy_to_aurora" {
   security_group_id            = aws_security_group.rds_proxy.id
   description                  = "Egress a Aurora (PostgreSQL)"
@@ -172,7 +181,7 @@ resource "aws_vpc_security_group_egress_rule" "rds_proxy_to_aurora" {
 
 resource "aws_security_group" "aurora" {
   name        = "${var.project_name}-aurora-sg-${terraform.workspace}"
-  description = "Security group del clúster Aurora PostgreSQL"
+  description = "Security group del cluster Aurora PostgreSQL"
   vpc_id      = aws_vpc.main.id
 
   tags = {
@@ -281,6 +290,15 @@ resource "aws_vpc_security_group_egress_rule" "lambda_comprobantes_to_vpc_endpoi
   referenced_security_group_id = aws_security_group.vpc_endpoints.id
 }
 
+resource "aws_vpc_security_group_egress_rule" "lambda_comprobantes_to_rds_proxy" {
+  security_group_id            = aws_security_group.lambda_comprobantes.id
+  description                  = "Salida PostgreSQL al RDS Proxy"
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  referenced_security_group_id = aws_security_group.rds_proxy.id
+}
+
 # --- VPC Endpoints ---
 
 resource "aws_security_group" "vpc_endpoints" {
@@ -312,4 +330,13 @@ resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_from_lambda_invent
   from_port                    = 443
   to_port                      = 443
   referenced_security_group_id = aws_security_group.lambda_inventario.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_from_lambda_comprobantes" {
+  security_group_id            = aws_security_group.vpc_endpoints.id
+  description                  = "Ingress desde Lambda Comprobantes (HTTPS)"
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
+  referenced_security_group_id = aws_security_group.lambda_comprobantes.id
 }
