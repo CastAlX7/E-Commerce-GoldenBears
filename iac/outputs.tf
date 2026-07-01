@@ -44,3 +44,14 @@ output "ecs_task_role_arn" {
   value       = aws_iam_role.ecs_task.arn
 }
 
+output "app_db_credentials_secret_arn" {
+  description = "ARN del secreto con username/database de la app"
+  value       = aws_secretsmanager_secret.app_db_credentials.arn
+  sensitive   = true
+}
+
+output "aurora_master_user_secret_arn" {
+  description = "ARN del secreto auto-generado con el password del master user de Aurora"
+  value       = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
+  sensitive   = true
+}
