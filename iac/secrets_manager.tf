@@ -1,5 +1,3 @@
-# CRÍTICO: ROTATION AUTOMÁTICA DE SECRETOS NO CONFIGURADA - REQUIERE LAMBDA ROTATOR
-
 resource "aws_secretsmanager_secret" "app_db_credentials" {
   name                    = "${var.project_name}/${terraform.workspace}/app/db-credentials"
   kms_key_id              = aws_kms_key.shared.arn
