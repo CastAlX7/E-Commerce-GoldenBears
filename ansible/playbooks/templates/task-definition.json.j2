@@ -18,6 +18,15 @@
           "hostPort": 8000,
           "protocol": "tcp"
         }
+      ],
+      "environment": [
+        { "name": "DB_HOST", "value": "{{ rds_proxy_endpoint }}" },
+        { "name": "DB_PORT", "value": "5432" }
+      ],
+      "secrets": [
+        { "name": "DB_USER", "valueFrom": "{{ app_db_credentials_secret_arn }}:username::" },
+        { "name": "DB_NAME", "valueFrom": "{{ app_db_credentials_secret_arn }}:database::" },
+        { "name": "DB_PASSWORD", "valueFrom": "{{ aurora_master_user_secret_arn }}:password::" }
       ]
     }
   ]
