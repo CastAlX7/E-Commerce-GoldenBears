@@ -1,4 +1,2 @@
 project_name: e-comerce-golden-bears
 aws_region: us-east-1
-ecr_repository: "{{ account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com/{{ project_name }}"
-terraform_dir: "../iac"
