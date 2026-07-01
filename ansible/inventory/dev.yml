@@ -4,7 +4,7 @@ all:
       ansible_connection: local
   vars:
     aws_region: us-east-1
-    project_name: golden-bears
+    project_name: e-comerce-golden-bears
     workspace: dev
     aurora_max_capacity: 2.0
     aurora_min_capacity: 0.5
