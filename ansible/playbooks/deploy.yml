@@ -6,18 +6,18 @@
     - name: Inicializar Terraform
       command: terraform init
       args:
-        chdir: ../../iac
+        chdir: "{{ playbook_dir }}/../../iac"
 
     - name: Seleccionar workspace (si ya existe)
       command: terraform workspace select {{ workspace }}
       args:
-        chdir: ../../iac
+        chdir: "{{ playbook_dir }}/../../iac"
       ignore_errors: true
 
     - name: Crear workspace si no existe
       command: terraform workspace new {{ workspace }}
       args:
-        chdir: ../../iac
+        chdir: "{{ playbook_dir }}/../../iac"
       ignore_errors: true
 
     - name: Aplicar Terraform
@@ -27,4 +27,4 @@
         -var="redis_auth_token={{ lookup('env', 'REDIS_AUTH_TOKEN') }}"
         -auto-approve
       args:
-        chdir: ../../iac
+        chdir: "{{ playbook_dir }}/../../iac"
