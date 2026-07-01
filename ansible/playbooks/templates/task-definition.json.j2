@@ -1,0 +1,24 @@
+{
+  "family": "{{ project_name }}-task-{{ workspace }}",
+  "cpu": "{{ ecs_cpu }}",
+  "memory": "{{ ecs_memory }}",
+  "executionRoleArn": "{{ ecs_task_execution_role_arn }}",
+  "taskRoleArn": "{{ ecs_task_role_arn }}",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "containerDefinitions": [
+    {
+      "name": "web",
+      "image": "{{ account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com/{{ project_name }}-backend-{{ workspace }}:{{ image_tag }}",
+      "essential": true,
+      "readonlyRootFilesystem": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ]
+    }
+  ]
+}
