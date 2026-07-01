@@ -25,7 +25,7 @@ resource "aws_ecs_task_definition" "main" {
 
   container_definitions = jsonencode([{
     name      = "web"
-    image     = "nginx:latest"
+    image     = "${aws_ecr_repository.backend.repository_url}:${terraform.workspace}"
     essential = true
     
     # Forzar el sistema de archivos raíz a solo lectura
