@@ -61,35 +61,12 @@ resource "aws_eip" "nat_a" {
   }
 }
 
-resource "aws_eip" "nat_b" {
-  domain = "vpc"
-
-  tags = {
-    Name        = "${var.project_name}-eip-nat-b-${terraform.workspace}"
-    Environment = terraform.workspace
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
-  }
-}
-
 resource "aws_nat_gateway" "nat_a" {
   allocation_id = aws_eip.nat_a.id
   subnet_id     = aws_subnet.public_a.id
 
   tags = {
     Name        = "${var.project_name}-nat-a-${terraform.workspace}"
-    Environment = terraform.workspace
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
-  }
-}
-
-resource "aws_nat_gateway" "nat_b" {
-  allocation_id = aws_eip.nat_b.id
-  subnet_id     = aws_subnet.public_b.id
-
-  tags = {
-    Name        = "${var.project_name}-nat-b-${terraform.workspace}"
     Environment = terraform.workspace
     Project     = var.project_name
     ManagedBy   = "Terraform"
@@ -256,7 +233,7 @@ resource "aws_route_table" "app_b" {
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat_b.id
+    nat_gateway_id = aws_nat_gateway.nat_a.id
   }
 
   tags = {
