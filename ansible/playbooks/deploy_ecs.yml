@@ -1,0 +1,48 @@
+---
+- name: Desplegar nueva revisión de imagen en ECS
+  hosts: localhost
+  gather_facts: false
+  vars:
+    cluster_name: "{{ project_name }}-ecs-cluster-{{ workspace }}"
+    service_name: "{{ project_name }}-svc-{{ workspace }}"
+    task_def_file: "/tmp/{{ project_name }}-task-{{ workspace }}-{{ image_tag }}.json"
+  tasks:
+    - name: Obtener account ID de AWS
+      command: aws sts get-caller-identity --query Account --output text
+      register: account_id_result
+
+    - name: Obtener ARNs de roles ECS desde Terraform
+      command: terraform output -raw {{ item }}
+      args:
+        chdir: "{{ playbook_dir }}/../../iac"
+      loop:
+        - ecs_task_execution_role_arn
+        - ecs_task_role_arn
+      register: tf_outputs
+
+    - name: Renderizar la nueva task definition
+      template:
+        src: templates/task-definition.json.j2
+        dest: "{{ task_def_file }}"
+      vars:
+        account_id: "{{ account_id_result.stdout }}"
+        ecs_task_execution_role_arn: "{{ tf_outputs.results[0].stdout }}"
+        ecs_task_role_arn: "{{ tf_outputs.results[1].stdout }}"
+
+    - name: Registrar la nueva revisión de la task definition
+      command: aws ecs register-task-definition --region {{ aws_region }} --cli-input-json file://{{ task_def_file }}
+      register: register_result
+
+    - name: Actualizar el servicio ECS a la nueva revisión
+      command: >
+        aws ecs update-service --cluster {{ cluster_name }} --service {{ service_name }}
+        --task-definition {{ (register_result.stdout | from_json).taskDefinition.taskDefinitionArn }}
+        --region {{ aws_region }}
+
+    - name: Esperar a que el servicio ECS quede estable
+      command: aws ecs wait services-stable --cluster {{ cluster_name }} --services {{ service_name }} --region {{ aws_region }}
+
+    - name: Limpiar archivo temporal de la task definition
+      file:
+        path: "{{ task_def_file }}"
+        state: absent
