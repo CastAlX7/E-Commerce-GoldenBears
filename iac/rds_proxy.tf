@@ -9,7 +9,6 @@ resource "aws_db_proxy" "aurora_proxy" {
   auth {
     auth_scheme = "SECRETS"
     iam_auth    = "REQUIRED"
-    # Referencia dinámica al secreto auto-generado por Aurora (manage_master_user_password=true)
     secret_arn  = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
   }
 
