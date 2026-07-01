@@ -34,4 +34,13 @@ output "cloudfront_domain_name" {
   value       = aws_cloudfront_distribution.frontend_cdn.domain_name
 }
 
+output "ecs_task_execution_role_arn" {
+  description = "ARN del rol de ejecución de la task definition ECS"
+  value       = aws_iam_role.ecs_task_exec.arn
+}
+
+output "ecs_task_role_arn" {
+  description = "ARN del rol de la task definition ECS"
+  value       = aws_iam_role.ecs_task.arn
+}
 
