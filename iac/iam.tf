@@ -175,6 +175,11 @@ resource "aws_iam_role_policy" "ecs_task" {
       },
       {
         Effect   = "Allow"
+        Action   = "secretsmanager:GetSecretValue"
+        Resource = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
+      },
+      {
+        Effect   = "Allow"
         Action   = "kms:Decrypt"
         Resource = aws_kms_key.shared.arn
       }
