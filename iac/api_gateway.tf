@@ -30,7 +30,6 @@ resource "aws_apigatewayv2_integration" "main" {
   integration_method     = "ANY"
   connection_type        = "VPC_LINK"
   connection_id          = aws_apigatewayv2_vpc_link.main.id
-  content_handling_strategy = "CONVERT_TO_TEXT"
   payload_format_version = "1.0"
 }
 
