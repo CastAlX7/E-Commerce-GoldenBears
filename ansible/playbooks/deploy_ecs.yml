@@ -11,13 +11,16 @@
       command: aws sts get-caller-identity --query Account --output text
       register: account_id_result
 
-    - name: Obtener ARNs de roles ECS desde Terraform
+    - name: Obtener valores de Terraform para la task definition
       command: terraform output -raw {{ item }}
       args:
         chdir: "{{ playbook_dir }}/../../iac"
       loop:
         - ecs_task_execution_role_arn
         - ecs_task_role_arn
+        - rds_proxy_endpoint
+        - app_db_credentials_secret_arn
+        - aurora_master_user_secret_arn
       register: tf_outputs
 
     - name: Renderizar la nueva task definition
@@ -28,6 +31,9 @@
         account_id: "{{ account_id_result.stdout }}"
         ecs_task_execution_role_arn: "{{ tf_outputs.results[0].stdout }}"
         ecs_task_role_arn: "{{ tf_outputs.results[1].stdout }}"
+        rds_proxy_endpoint: "{{ tf_outputs.results[2].stdout }}"
+        app_db_credentials_secret_arn: "{{ tf_outputs.results[3].stdout }}"
+        aurora_master_user_secret_arn: "{{ tf_outputs.results[4].stdout }}"
 
     - name: Registrar la nueva revisión de la task definition
       command: aws ecs register-task-definition --region {{ aws_region }} --cli-input-json file://{{ task_def_file }}
