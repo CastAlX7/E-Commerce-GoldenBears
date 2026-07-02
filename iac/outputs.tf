@@ -55,3 +55,9 @@ output "aurora_master_user_secret_arn" {
   value       = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
   sensitive   = true
 }
+
+output "redis_credentials_secret_arn" {
+  description = "ARN del secreto con el auth token de Redis"
+  value       = aws_secretsmanager_secret.redis_credentials.arn
+  sensitive   = true
+}
