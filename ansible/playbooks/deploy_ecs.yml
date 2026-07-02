@@ -21,6 +21,8 @@
         - rds_proxy_endpoint
         - app_db_credentials_secret_arn
         - aurora_master_user_secret_arn
+        - redis_primary_endpoint
+        - redis_credentials_secret_arn
       register: tf_outputs
 
     - name: Renderizar la nueva task definition
@@ -34,6 +36,8 @@
         rds_proxy_endpoint: "{{ tf_outputs.results[2].stdout }}"
         app_db_credentials_secret_arn: "{{ tf_outputs.results[3].stdout }}"
         aurora_master_user_secret_arn: "{{ tf_outputs.results[4].stdout }}"
+        redis_primary_endpoint: "{{ tf_outputs.results[5].stdout }}"
+        redis_credentials_secret_arn: "{{ tf_outputs.results[6].stdout }}"
 
     - name: Registrar la nueva revisión de la task definition
       command: aws ecs register-task-definition --region {{ aws_region }} --cli-input-json file://{{ task_def_file }}
