@@ -71,11 +71,18 @@ resource "aws_iam_role_policy" "rds_proxy" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = "secretsmanager:GetSecretValue"
-      Resource = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
-    }]
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "secretsmanager:GetSecretValue"
+        Resource = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = "kms:Decrypt"
+        Resource = aws_kms_key.shared.arn
+      }
+    ]
   })
 }
 
@@ -137,6 +144,31 @@ resource "aws_iam_role_policy_attachment" "ecs_task_exec" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_role_policy" "ecs_task_exec_secrets" {
+  name = "${var.project_name}-ecs-task-exec-secrets-policy-${terraform.workspace}"
+  role = aws_iam_role.ecs_task_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = "secretsmanager:GetSecretValue"
+        Resource = [
+          aws_secretsmanager_secret.app_db_credentials.arn,
+          aws_rds_cluster.aurora.master_user_secret[0].secret_arn,
+          aws_secretsmanager_secret.redis_credentials.arn
+        ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = "kms:Decrypt"
+        Resource = aws_kms_key.shared.arn
+      }
+    ]
+  })
+}
+
 # --- ECS Task (permisos de negocio) ---
 
 resource "aws_iam_role" "ecs_task" {
@@ -168,16 +200,6 @@ resource "aws_iam_role_policy" "ecs_task" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      {
-        Effect   = "Allow"
-        Action   = "secretsmanager:GetSecretValue"
-        Resource = aws_secretsmanager_secret.app_db_credentials.arn
-      },
-      {
-        Effect   = "Allow"
-        Action   = "secretsmanager:GetSecretValue"
-        Resource = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
-      },
       {
         Effect   = "Allow"
         Action   = "kms:Decrypt"
