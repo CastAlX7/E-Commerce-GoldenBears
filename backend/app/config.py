@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     GMAIL_FROM_NAME: str = "Golden Bears"
     EMAIL_ENABLED: bool = True
 
+    REDIS_HOST: str = ""
+    REDIS_PORT: str = "6379"
+    REDIS_AUTH_TOKEN: str = ""
+
     class Config:
         env_file = ".env"
         extra = "ignore"
