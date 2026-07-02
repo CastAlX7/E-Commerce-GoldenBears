@@ -1,7 +1,7 @@
 import os
 import uuid
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -10,10 +10,11 @@ from fastapi import HTTPException, status
 import httpx
 
 from app.models.cart import CartItem
-from app.models.product import Product, StockLock
+from app.models.product import Product
 from app.models.order import Order, OrderItem, BillingDetail, PaymentToken
 from app.models.user import User
 from app.schemas.order import CheckoutConfirmRequest
+from app.services.stock_lock_service import create_stock_lock, get_locked_quantity, release_user_locks
 
 CULQI_SECRET_KEY = os.getenv("CULQI_SECRET_KEY", "sk_test_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
@@ -68,8 +69,6 @@ async def initiate_checkout(db: AsyncSession, user_id: str, shipping_city: str, 
     if not cart_items:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cart is empty")
 
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(minutes=15)
     subtotal = Decimal("0")
     items_summary = []
 
@@ -81,15 +80,7 @@ async def initiate_checkout(db: AsyncSession, user_id: str, shipping_city: str, 
                 detail=f"Product '{product.name}' is no longer available",
             )
 
-        locked_result = await db.execute(
-            select(StockLock).where(
-                StockLock.product_id == product.id,
-                StockLock.expires_at > now,
-                StockLock.order_id == None,
-            )
-        )
-        active_locks = locked_result.scalars().all()
-        total_locked = sum(lock.quantity for lock in active_locks)
+        total_locked = await get_locked_quantity(product.id)
         available = product.stock - total_locked
 
         if cart_item.quantity > available:
@@ -98,14 +89,7 @@ async def initiate_checkout(db: AsyncSession, user_id: str, shipping_city: str, 
                 detail=f"Insufficient stock for '{product.name}'. Available: {available}",
             )
 
-        lock = StockLock(
-            id=str(uuid.uuid4()),
-            product_id=product.id,
-            quantity=cart_item.quantity,
-            locked_at=now,
-            expires_at=expires_at,
-        )
-        db.add(lock)
+        await create_stock_lock(product.id, user_id, cart_item.quantity)
 
         item_subtotal = product.price * cart_item.quantity
         subtotal += item_subtotal
@@ -246,11 +230,8 @@ async def confirm_checkout(db: AsyncSession, user: User, data: CheckoutConfirmRe
     db.add(PaymentToken(**payment_kwargs))
 
     # Release stock locks for this user
-    locks_result = await db.execute(
-        select(StockLock).where(StockLock.order_id == None, StockLock.expires_at > now)
-    )
-    for lock in locks_result.scalars().all():
-        await db.delete(lock)
+    for oi in order_items:
+        await release_user_locks(oi["product"].id, user.id)
 
     # Clear cart
     for cart_item in cart_items:
