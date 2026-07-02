@@ -1,3 +1,16 @@
+resource "aws_cloudwatch_log_group" "ecs_backend" {
+  name              = "/ecs/${var.project_name}-${terraform.workspace}"
+  retention_in_days = var.log_retention_days
+  kms_key_id        = aws_kms_key.shared.arn
+
+  tags = {
+    Name        = "${var.project_name}-ecs-backend-logs-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-ecs-cluster-${terraform.workspace}"
 
@@ -36,6 +49,15 @@ resource "aws_ecs_task_definition" "main" {
       hostPort      = 8000
       protocol      = "tcp"
     }]
+
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.ecs_backend.name
+        "awslogs-region"        = var.region
+        "awslogs-stream-prefix" = "web"
+      }
+    }
   }])
 
   tags = {
