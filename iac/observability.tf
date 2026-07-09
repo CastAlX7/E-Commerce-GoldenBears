@@ -23,6 +23,24 @@ resource "aws_service_discovery_service" "backend" {
   }
 }
 
+# Prometheus corre en su propia tarea Fargate (ENI/IP propia, modo awsvpc), así
+# que Grafana necesita resolverlo por nombre igual que el backend — sin esto,
+# el datasource de Prometheus en Grafana no tiene forma de encontrarlo.
+resource "aws_service_discovery_service" "prometheus" {
+  name = "prometheus"
+
+  dns_config {
+    namespace_id = aws_service_discovery_private_dns_namespace.observability.id
+
+    dns_records {
+      ttl  = 10
+      type = "A"
+    }
+
+    routing_policy = "MULTIVALUE"
+  }
+}
+
 # --- CloudWatch Log Group for Prometheus & Grafana ---
 resource "aws_cloudwatch_log_group" "observability" {
   name              = "/ecs/golden-bears-observability-${terraform.workspace}"
@@ -45,19 +63,144 @@ resource "aws_security_group" "observability" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "grafana_web" {
-  security_group_id = aws_security_group.observability.id
-  description       = "Allow inbound HTTP access to Grafana from VPC"
-  ip_protocol       = "tcp"
-  from_port         = 3000
-  to_port           = 3000
-  cidr_ipv4         = aws_vpc.main.cidr_block
+  security_group_id            = aws_security_group.observability.id
+  description                  = "Allow inbound HTTP access to Grafana from its ALB público"
+  ip_protocol                  = "tcp"
+  from_port                    = 3000
+  to_port                      = 3000
+  referenced_security_group_id = aws_security_group.grafana_alb.id
 }
 
 resource "aws_vpc_security_group_egress_rule" "observability_egress" {
   security_group_id = aws_security_group.observability.id
-  description       = "Allow all outbound traffic"
+  description        = "Allow all outbound traffic"
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
+}
+
+# Prometheus (observability) -> backend, en el mismo puerto 8000 donde ya
+# corre la API — sin esto Prometheus nunca puede scrapear /metrics.
+resource "aws_vpc_security_group_ingress_rule" "ecs_from_observability" {
+  security_group_id            = aws_security_group.ecs.id
+  description                  = "Ingress desde Prometheus (observability) en puerto 8000 para scraping"
+  ip_protocol                  = "tcp"
+  from_port                    = 8000
+  to_port                      = 8000
+  referenced_security_group_id = aws_security_group.observability.id
+}
+
+# Montaje de EFS (Grafana) — self-referencing, sin esto el mount de EFS se
+# cuelga al iniciar la tarea de Grafana.
+resource "aws_vpc_security_group_ingress_rule" "observability_efs_nfs" {
+  security_group_id            = aws_security_group.observability.id
+  description                  = "Ingress NFS (puerto 2049) para montar EFS de Grafana"
+  ip_protocol                  = "tcp"
+  from_port                    = 2049
+  to_port                      = 2049
+  referenced_security_group_id = aws_security_group.observability.id
+}
+
+# --- ALB público para acceder a Grafana desde fuera de la VPC ---
+# No hay dominio propio (se sacó ACM/Route53 del proyecto), así que queda en
+# HTTP plano sobre el DNS que da el propio ALB — Grafana maneja su propia
+# autenticación (admin + password en Secrets Manager) detrás de esto.
+resource "aws_security_group" "grafana_alb" {
+  name        = "${var.project_name}-grafana-alb-sg-${terraform.workspace}"
+  description = "Security group del ALB público de Grafana"
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name        = "${var.project_name}-grafana-alb-sg-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "grafana_alb_from_internet" {
+  security_group_id = aws_security_group.grafana_alb.id
+  description        = "Acceso público a Grafana"
+  ip_protocol       = "tcp"
+  from_port         = 80
+  to_port           = 80
+  cidr_ipv4         = "0.0.0.0/0"
+}
+
+resource "aws_vpc_security_group_egress_rule" "grafana_alb_to_observability" {
+  security_group_id            = aws_security_group.grafana_alb.id
+  description                  = "Egress a Grafana en puerto 3000"
+  ip_protocol                  = "tcp"
+  from_port                    = 3000
+  to_port                      = 3000
+  referenced_security_group_id = aws_security_group.observability.id
+}
+
+resource "aws_lb" "grafana" {
+  # checkov:skip=CKV2_AWS_20: sin dominio/ACM en el proyecto, queda en HTTP plano detrás del propio DNS del ALB; Grafana maneja su propia autenticación.
+  # Nombre corto a propósito: los ALB tienen un límite duro de 32 caracteres
+  # en AWS, y "${var.project_name}-grafana-alb-${workspace}" lo supera.
+  name               = "gb-grafana-alb-${terraform.workspace}"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.grafana_alb.id]
+  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+
+  access_logs {
+    bucket  = aws_s3_bucket.documental.id
+    prefix  = "alb"
+    enabled = true
+  }
+
+  tags = {
+    Name        = "${var.project_name}-grafana-alb-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_lb_target_group" "grafana" {
+  # Mismo límite de 32 caracteres que aws_lb.grafana.
+  name        = "gb-grafana-tg-${terraform.workspace}"
+  port        = 3000
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.main.id
+
+  health_check {
+    path                = "/api/health"
+    protocol            = "HTTP"
+    matcher             = "200"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+  }
+
+  tags = {
+    Name        = "${var.project_name}-grafana-tg-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_lb_listener" "grafana" {
+  load_balancer_arn = aws_lb.grafana.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.grafana.arn
+  }
+
+  tags = {
+    Name        = "${var.project_name}-grafana-listener-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
 }
 
 # --- EFS for Grafana Storage ---
@@ -108,7 +251,9 @@ resource "aws_iam_role_policy_attachment" "observability_exec" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Ingress to pull configuration from Secrets Manager
+# Ingress to pull configuration from Secrets Manager — acotado al secret de
+# Grafana y a la llave "secrets", no a "*" (mismo patrón de mínimo privilegio
+# que el resto de iac/iam.tf).
 resource "aws_iam_policy" "observability_secrets" {
   name = "${var.project_name}-observability-secrets-${terraform.workspace}"
 
@@ -116,12 +261,14 @@ resource "aws_iam_policy" "observability_secrets" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "secretsmanager:GetSecretValue",
-          "kms:Decrypt"
-        ]
-        Resource = "*"
+        Effect   = "Allow"
+        Action   = "secretsmanager:GetSecretValue"
+        Resource = aws_secretsmanager_secret.grafana_admin.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = "kms:Decrypt"
+        Resource = aws_kms_key.secrets.arn
       }
     ]
   })
@@ -190,6 +337,31 @@ resource "aws_iam_policy" "grafana_cloudwatch_readonly" {
   })
 }
 
+# Rol de infraestructura que ECS asume para provisionar y adjuntar el volumen
+# EBS gestionado de Prometheus (distinto del execution/task role — es el rol
+# que usa el propio servicio ECS, no el contenedor).
+resource "aws_iam_role" "ecs_infrastructure" {
+  name = "${var.project_name}-ecs-infra-role-${terraform.workspace}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_infrastructure" {
+  role       = aws_iam_role.ecs_infrastructure.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSInfrastructureRolePolicyForVolumes"
+}
+
 resource "aws_iam_role_policy_attachment" "grafana_cloudwatch" {
   role       = aws_iam_role.grafana_task.name
   policy_arn = aws_iam_policy.grafana_cloudwatch_readonly.arn
@@ -252,6 +424,23 @@ resource "aws_ecs_service" "prometheus" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
+  # El volumen "prometheus-tsdb" del task definition queda como
+  # "configure_at_launch" — los parámetros reales del EBS (tamaño, tipo, rol)
+  # se proveen acá, a nivel de servicio, no en el task definition.
+  volume_configuration {
+    name = "prometheus-tsdb"
+    managed_ebs_volume {
+      role_arn          = aws_iam_role.ecs_infrastructure.arn
+      size_in_gb        = 20
+      volume_type       = "gp3"
+      file_system_type  = "ext4"
+    }
+  }
+
+  service_registries {
+    registry_arn = aws_service_discovery_service.prometheus.arn
+  }
+
   network_configuration {
     security_groups  = [aws_security_group.observability.id]
     subnets          = [aws_subnet.private_app_a.id, aws_subnet.private_app_b.id]
@@ -286,7 +475,7 @@ resource "aws_ecs_task_definition" "grafana" {
 
   container_definitions = jsonencode([{
     name      = "grafana"
-    image     = "grafana/grafana:11.0.0"
+    image     = "${aws_ecr_repository.grafana.repository_url}:${terraform.workspace}"
     essential = true
     portMappings = [{
       containerPort = 3000
@@ -297,6 +486,15 @@ resource "aws_ecs_task_definition" "grafana" {
       sourceVolume  = "grafana-storage"
       containerPath = "/var/lib/grafana"
     }]
+    environment = [
+      { name = "GF_SECURITY_ADMIN_USER", value = "admin" }
+    ]
+    secrets = [
+      {
+        name      = "GF_SECURITY_ADMIN_PASSWORD"
+        valueFrom = "${aws_secretsmanager_secret.grafana_admin.arn}:admin_password::"
+      }
+    ]
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -314,6 +512,12 @@ resource "aws_ecs_service" "grafana" {
   task_definition = aws_ecs_task_definition.grafana.arn
   desired_count   = 1
   launch_type     = "FARGATE"
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.grafana.arn
+    container_name   = "grafana"
+    container_port   = 3000
+  }
 
   network_configuration {
     security_groups  = [aws_security_group.observability.id]

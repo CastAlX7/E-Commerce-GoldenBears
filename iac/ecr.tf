@@ -29,3 +29,22 @@ resource "aws_ecr_repository" "prometheus" {
     ManagedBy   = "Terraform"
   }
 }
+
+# Imagen propia (grafana/grafana + provisioning/ ya horneado) en vez de la
+# imagen pública directo — así el datasource de CloudWatch/Prometheus queda
+# provisionado automáticamente al arrancar el contenedor.
+resource "aws_ecr_repository" "grafana" {
+  name                 = "${var.project_name}-grafana-${terraform.workspace}"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name        = "${var.project_name}-grafana-ecr-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}

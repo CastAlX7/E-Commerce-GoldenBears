@@ -96,3 +96,18 @@ output "ecs_memory" {
   description = "Memoria de la task definition base (para que Ansible arme la revisión real con el mismo valor, sin duplicarlo)"
   value       = var.ecs_memory
 }
+
+output "grafana_url" {
+  description = "URL pública de Grafana (HTTP, sin dominio propio)"
+  value       = "http://${aws_lb.grafana.dns_name}"
+}
+
+output "ecr_prometheus_repository_url" {
+  description = "URL del repositorio ECR de Prometheus para este workspace"
+  value       = aws_ecr_repository.prometheus.repository_url
+}
+
+output "ecr_grafana_repository_url" {
+  description = "URL del repositorio ECR de Grafana para este workspace"
+  value       = aws_ecr_repository.grafana.repository_url
+}

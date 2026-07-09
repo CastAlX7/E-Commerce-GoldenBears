@@ -264,6 +264,7 @@ jobs:
             -var="gmail_app_password=${{ secrets.GMAIL_APP_PASSWORD }}" \
             -var="gmail_user=${{ vars.GMAIL_USER }}" \
             -var="nubefact_token=${{ secrets.NUBEFACT_TOKEN }}" \
+            -var="grafana_admin_password=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" \
             | tee plan_output.txt
         working-directory: iac
 

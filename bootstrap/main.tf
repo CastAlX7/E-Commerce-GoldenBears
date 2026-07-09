@@ -183,6 +183,8 @@ resource "aws_iam_policy" "ci_infra_access" {
           "apigateway:*",
           "logs:*",
           "signer:*",
+          "servicediscovery:*",
+          "elasticfilesystem:*",
         ]
         Resource = "*"
       }

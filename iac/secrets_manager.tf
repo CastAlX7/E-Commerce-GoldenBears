@@ -80,3 +80,21 @@ resource "aws_secretsmanager_secret_version" "gmail_credentials" {
     gmail_app_password = var.gmail_app_password
   })
 }
+
+resource "aws_secretsmanager_secret" "grafana_admin" {
+  name                    = "${var.project_name}/${terraform.workspace}/observability/grafana-admin"
+  kms_key_id              = aws_kms_key.secrets.arn
+  recovery_window_in_days = 0
+
+  tags = {
+    Name        = "${var.project_name}-grafana-admin-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "grafana_admin" {
+  secret_id     = aws_secretsmanager_secret.grafana_admin.id
+  secret_string = jsonencode({ admin_password = var.grafana_admin_password })
+}

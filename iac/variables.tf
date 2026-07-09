@@ -97,3 +97,9 @@ variable "nubefact_token" {
   sensitive   = true
   description = "Token de la API de NubeFact/SUNAT (placeholder mientras la integración esté mockeada)"
 }
+
+variable "grafana_admin_password" {
+  type        = string
+  sensitive   = true
+  description = "Password del usuario admin de Grafana"
+}
