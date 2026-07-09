@@ -194,6 +194,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
           aws-region:     ${{ env.AWS_REGION }}
 
       - name: Instalar Terraform
@@ -211,6 +212,16 @@ jobs:
           terraform workspace new "${{ needs.resolve-environment.outputs.workspace }}"
         working-directory: iac
 
+      # Antes de fmt/validate: aws_lambda_function calcula source_code_hash
+      # con filebase64sha256 sobre el .zip real, así que el archivo debe
+      # existir en disco incluso solo para validar (no solo para el plan).
+      - name: Descargar los .zip de las Lambdas (artifacts del job anterior)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: lambda-*
+          path: iac
+          merge-multiple: true
+
       - name: terraform fmt (verifica formato)
         run: terraform fmt -check -recursive
         working-directory: iac
@@ -226,13 +237,6 @@ jobs:
           config_file: iac/.checkov.yaml
           output_format: cli
           soft_fail: true
-
-      - name: Descargar los .zip de las Lambdas (artifacts del job anterior)
-        uses: actions/download-artifact@v4
-        with:
-          pattern: lambda-*
-          path: iac
-          merge-multiple: true
 
       - name: terraform plan
         # Los valores no sensibles vienen de Variables del Environment
@@ -326,6 +330,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
           aws-region:     ${{ env.AWS_REGION }}
 
       - name: Terraform init (backend remoto S3)

@@ -72,6 +72,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
           aws-region:     ${{ env.AWS_REGION }}
 
       - name: Login a Amazon ECR
@@ -155,6 +156,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
           aws-region:     ${{ env.AWS_REGION }}
 
       - name: Sincronizar build a S3
