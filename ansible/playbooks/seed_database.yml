@@ -1,0 +1,62 @@
+---
+# Corre seed.py como una tarea suelta de ECS, reusando la red del
+# servicio ya desplegado. Uso: ansible-playbook playbooks/seed_database.yml -e "workspace=dev"
+- name: Sembrar productos de prueba en la base de datos
+  hosts: localhost
+  gather_facts: false
+  vars:
+    workspace: dev
+  tasks:
+    - name: Sacar la network config del servicio ECS ya desplegado
+      command: >
+        aws ecs describe-services
+        --cluster {{ project_name }}-ecs-cluster-{{ workspace }}
+        --services {{ project_name }}-svc-{{ workspace }}
+        --region {{ aws_region }}
+        --query "services[0].networkConfiguration"
+        --output json
+      register: network_config_raw
+      changed_when: false
+
+    - name: Lanzar la tarea de seed (sobreescribe el comando del contenedor)
+      command: >
+        aws ecs run-task
+        --cluster {{ project_name }}-ecs-cluster-{{ workspace }}
+        --task-definition {{ project_name }}-task-{{ workspace }}
+        --launch-type FARGATE
+        --region {{ aws_region }}
+        --network-configuration '{{ network_config_raw.stdout }}'
+        --overrides '{"containerOverrides":[{"name":"web","command":["python","seed.py"]}]}'
+        --query "tasks[0].taskArn"
+        --output text
+      register: seed_task
+
+    - name: Esperar a que la tarea termine
+      command: >
+        aws ecs wait tasks-stopped
+        --cluster {{ project_name }}-ecs-cluster-{{ workspace }}
+        --tasks {{ seed_task.stdout }}
+        --region {{ aws_region }}
+      changed_when: false
+
+    - name: Revisar el exit code del contenedor
+      command: >
+        aws ecs describe-tasks
+        --cluster {{ project_name }}-ecs-cluster-{{ workspace }}
+        --tasks {{ seed_task.stdout }}
+        --region {{ aws_region }}
+        --query "tasks[0].containers[0].exitCode"
+        --output text
+      register: seed_exit_code
+      changed_when: false
+
+    - name: Fallar si seed.py no terminó bien
+      fail:
+        msg: >
+          seed.py terminó con exit code {{ seed_exit_code.stdout }} — revisa los logs
+          en CloudWatch (/ecs/{{ project_name }}-{{ workspace }}, tarea {{ seed_task.stdout }})
+      when: seed_exit_code.stdout != "0"
+
+    - name: Confirmación
+      debug:
+        msg: "seed.py corrió correctamente (exit code 0) en la tarea {{ seed_task.stdout }}"
