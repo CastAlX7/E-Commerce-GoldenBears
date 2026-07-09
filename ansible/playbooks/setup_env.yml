@@ -1,9 +1,66 @@
-- name: Generar backend/.env desde variables de entorno
+---
+# Genera backend/.env para correr el backend en tu laptop apuntando a
+# los recursos reales ya desplegados en AWS (no valores de prueba).
+# Uso: ansible-playbook playbooks/setup_env.yml -e "workspace=dev"
+- name: Generar backend/.env con valores reales de AWS
   hosts: localhost
   gather_facts: false
+  vars:
+    workspace: dev
   tasks:
+    - name: Endpoint del RDS Proxy
+      command: >
+        aws rds describe-db-proxies
+        --db-proxy-name {{ project_name }}-proxy-{{ workspace }}
+        --region {{ aws_region }}
+        --query "DBProxies[0].Endpoint" --output text
+      register: rds_proxy_endpoint
+      changed_when: false
+
+    - name: Endpoint primario de Redis
+      command: >
+        aws elasticache describe-replication-groups
+        --replication-group-id {{ project_name }}-redis-{{ workspace }}
+        --region {{ aws_region }}
+        --query "ReplicationGroups[0].NodeGroups[0].PrimaryEndpoint.Address" --output text
+      register: redis_endpoint
+      changed_when: false
+
+    - name: ARN del secret con la password maestra de Aurora
+      command: >
+        aws rds describe-db-clusters
+        --db-cluster-identifier {{ project_name }}-aurora-cluster-{{ workspace }}
+        --region {{ aws_region }}
+        --query "DBClusters[0].MasterUserSecret.SecretArn" --output text
+      register: aurora_secret_arn
+      changed_when: false
+
+    - name: Password real de Aurora
+      command: >
+        aws secretsmanager get-secret-value
+        --secret-id {{ aurora_secret_arn.stdout }}
+        --region {{ aws_region }}
+        --query "SecretString" --output text
+      register: aurora_secret_raw
+      changed_when: false
+
+    - name: Auth token real de Redis
+      command: >
+        aws secretsmanager get-secret-value
+        --secret-id "{{ project_name }}/{{ workspace }}/cache/redis-token"
+        --region {{ aws_region }}
+        --query "SecretString" --output text
+      register: redis_secret_raw
+      changed_when: false
+
+    - name: Calcular valores derivados
+      set_fact:
+        db_password: "{{ (aurora_secret_raw.stdout | from_json).password }}"
+        redis_auth_token: "{{ (redis_secret_raw.stdout | from_json).auth_token }}"
+        sns_topic_arn: "arn:aws:sns:{{ aws_region }}:{{ lookup('pipe', 'aws sts get-caller-identity --query Account --output text') }}:{{ project_name }}-orders-topic-{{ workspace }}"
+
     - name: Generar backend/.env
       ansible.builtin.template:
         src: templates/env.j2
         dest: "{{ playbook_dir }}/../../backend/.env"
-        mode: '0600'
+        mode: "0600"
