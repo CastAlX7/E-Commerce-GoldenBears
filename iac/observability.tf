@@ -64,7 +64,7 @@ resource "aws_security_group" "observability" {
 
 resource "aws_vpc_security_group_ingress_rule" "grafana_web" {
   security_group_id            = aws_security_group.observability.id
-  description                  = "Allow inbound HTTP access to Grafana from its ALB público"
+  description                  = "Allow inbound HTTP access to Grafana from its public ALB"
   ip_protocol                  = "tcp"
   from_port                    = 3000
   to_port                      = 3000
@@ -106,7 +106,7 @@ resource "aws_vpc_security_group_ingress_rule" "observability_efs_nfs" {
 # autenticación (admin + password en Secrets Manager) detrás de esto.
 resource "aws_security_group" "grafana_alb" {
   name        = "${var.project_name}-grafana-alb-sg-${terraform.workspace}"
-  description = "Security group del ALB público de Grafana"
+  description = "Security group del ALB publico de Grafana"
   vpc_id      = aws_vpc.main.id
 
   tags = {
@@ -119,7 +119,7 @@ resource "aws_security_group" "grafana_alb" {
 
 resource "aws_vpc_security_group_ingress_rule" "grafana_alb_from_internet" {
   security_group_id = aws_security_group.grafana_alb.id
-  description       = "Acceso público a Grafana"
+  description       = "Acceso publico a Grafana"
   ip_protocol       = "tcp"
   from_port         = 80
   to_port           = 80

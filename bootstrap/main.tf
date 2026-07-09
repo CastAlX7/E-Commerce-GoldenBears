@@ -185,6 +185,11 @@ resource "aws_iam_policy" "ci_infra_access" {
           "signer:*",
           "servicediscovery:*",
           "elasticfilesystem:*",
+          # Cloud Map crea sus namespaces DNS privados usando Route53 por
+          # debajo (aws_service_discovery_private_dns_namespace hace
+          # route53:CreateHostedZone internamente) — no es para el dominio
+          # propio que se sacó del proyecto, es un requisito de Cloud Map.
+          "route53:*",
         ]
         Resource = "*"
       }
