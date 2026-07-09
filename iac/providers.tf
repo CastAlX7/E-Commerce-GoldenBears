@@ -1,5 +1,6 @@
 terraform {
-  required_version = ">= 1.0.11"
+  # >=1.10 porque iac/backend.tf usa use_lockfile (lockfile nativo de S3).
+  required_version = ">= 1.10.0"
 
   required_providers {
     aws = {
@@ -26,5 +27,4 @@ provider "aws" {
 }
 
 data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
 data "aws_elb_service_account" "main" {}
