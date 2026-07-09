@@ -1,4 +1,12 @@
 ---
+# Registra una nueva revisión de la Task Definition (imagen + env + secrets)
+# y actualiza el servicio ECS. Los valores de infraestructura vienen de
+# tf_outputs_file — el `terraform output -json` que generó el job "apply" de
+# terraform.yml, pasado como artifact a través de ecr-build.yml — este
+# playbook nunca corre `terraform output` directo, no necesita acceso al state.
+#
+# Uso: ansible-playbook -i "inventory/<workspace>.yml" playbooks/deploy_ecs.yml \
+#        -e "image_tag=<sha>" -e "tf_outputs_file=/ruta/absoluta/tf-outputs.json"
 - name: Desplegar nueva revisión de imagen en ECS
   hosts: localhost
   gather_facts: false
@@ -7,37 +15,14 @@
     service_name: "{{ project_name }}-svc-{{ workspace }}"
     task_def_file: "/tmp/{{ project_name }}-task-{{ workspace }}-{{ image_tag }}.json"
   tasks:
-    - name: Obtener account ID de AWS
-      command: aws sts get-caller-identity --query Account --output text
-      register: account_id_result
-
-    - name: Obtener valores de Terraform para la task definition
-      command: terraform output -raw {{ item }}
-      args:
-        chdir: "{{ playbook_dir }}/../../iac"
-      loop:
-        - ecs_task_execution_role_arn
-        - ecs_task_role_arn
-        - rds_proxy_endpoint
-        - app_db_credentials_secret_arn
-        - aurora_master_user_secret_arn
-        - redis_primary_endpoint
-        - redis_credentials_secret_arn
-      register: tf_outputs
+    - name: Cargar los outputs de Terraform generados por el job anterior
+      set_fact:
+        tf_outputs: "{{ lookup('file', tf_outputs_file) | from_json }}"
 
     - name: Renderizar la nueva task definition
       template:
         src: templates/task-definition.json.j2
         dest: "{{ task_def_file }}"
-      vars:
-        account_id: "{{ account_id_result.stdout }}"
-        ecs_task_execution_role_arn: "{{ tf_outputs.results[0].stdout }}"
-        ecs_task_role_arn: "{{ tf_outputs.results[1].stdout }}"
-        rds_proxy_endpoint: "{{ tf_outputs.results[2].stdout }}"
-        app_db_credentials_secret_arn: "{{ tf_outputs.results[3].stdout }}"
-        aurora_master_user_secret_arn: "{{ tf_outputs.results[4].stdout }}"
-        redis_primary_endpoint: "{{ tf_outputs.results[5].stdout }}"
-        redis_credentials_secret_arn: "{{ tf_outputs.results[6].stdout }}"
 
     - name: Registrar la nueva revisión de la task definition
       command: aws ecs register-task-definition --region {{ aws_region }} --cli-input-json file://{{ task_def_file }}
