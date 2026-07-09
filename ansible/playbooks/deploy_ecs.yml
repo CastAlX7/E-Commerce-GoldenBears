@@ -1,0 +1,43 @@
+---
+# Registra una nueva revisión de la Task Definition (imagen + env + secrets)
+# y actualiza el servicio ECS. Los valores de infraestructura vienen de
+# tf_outputs_file — el `terraform output -json` que generó el job "apply" de
+# terraform.yml, pasado como artifact a través de ecr-build.yml — este
+# playbook nunca corre `terraform output` directo, no necesita acceso al state.
+#
+# Uso: ansible-playbook -i "inventory/<workspace>.yml" playbooks/deploy_ecs.yml \
+#        -e "image_tag=<sha>" -e "tf_outputs_file=/ruta/absoluta/tf-outputs.json"
+- name: Desplegar nueva revisión de imagen en ECS
+  hosts: localhost
+  gather_facts: false
+  vars:
+    cluster_name: "{{ project_name }}-ecs-cluster-{{ workspace }}"
+    service_name: "{{ project_name }}-svc-{{ workspace }}"
+    task_def_file: "/tmp/{{ project_name }}-task-{{ workspace }}-{{ image_tag }}.json"
+  tasks:
+    - name: Cargar los outputs de Terraform generados por el job anterior
+      set_fact:
+        tf_outputs: "{{ lookup('file', tf_outputs_file) | from_json }}"
+
+    - name: Renderizar la nueva task definition
+      template:
+        src: templates/task-definition.json.j2
+        dest: "{{ task_def_file }}"
+
+    - name: Registrar la nueva revisión de la task definition
+      command: aws ecs register-task-definition --region {{ aws_region }} --cli-input-json file://{{ task_def_file }}
+      register: register_result
+
+    - name: Actualizar el servicio ECS a la nueva revisión
+      command: >
+        aws ecs update-service --cluster {{ cluster_name }} --service {{ service_name }}
+        --task-definition {{ (register_result.stdout | from_json).taskDefinition.taskDefinitionArn }}
+        --region {{ aws_region }}
+
+    - name: Esperar a que el servicio ECS quede estable
+      command: aws ecs wait services-stable --cluster {{ cluster_name }} --services {{ service_name }} --region {{ aws_region }}
+
+    - name: Limpiar archivo temporal de la task definition
+      file:
+        path: "{{ task_def_file }}"
+        state: absent

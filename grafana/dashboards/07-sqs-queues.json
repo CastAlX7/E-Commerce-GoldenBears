@@ -1,0 +1,93 @@
+{
+  "title": "07 - SQS Queues + DLQ",
+  "uid": "gb-sqs",
+  "schemaVersion": 39,
+  "editable": true,
+  "templating": {
+    "list": [
+      {
+        "name": "workspace",
+        "type": "custom",
+        "query": "dev,qa,prod",
+        "current": { "text": "dev", "value": "dev" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "ApproximateNumberOfMessagesVisible — colas principales",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "datasource": "CloudWatch",
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "AWS/SQS",
+          "metricName": "ApproximateNumberOfMessagesVisible",
+          "statistic": "Average",
+          "dimensions": { "QueueName": "e-comerce-golden-bears-inventory-queue-$workspace" },
+          "region": "us-east-1"
+        },
+        {
+          "refId": "B",
+          "namespace": "AWS/SQS",
+          "metricName": "ApproximateNumberOfMessagesVisible",
+          "statistic": "Average",
+          "dimensions": { "QueueName": "e-comerce-golden-bears-billing-queue-$workspace" },
+          "region": "us-east-1"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "ApproximateAgeOfOldestMessage — colas principales",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": "CloudWatch",
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "AWS/SQS",
+          "metricName": "ApproximateAgeOfOldestMessage",
+          "statistic": "Maximum",
+          "dimensions": { "QueueName": "e-comerce-golden-bears-inventory-queue-$workspace" },
+          "region": "us-east-1"
+        },
+        {
+          "refId": "B",
+          "namespace": "AWS/SQS",
+          "metricName": "ApproximateAgeOfOldestMessage",
+          "statistic": "Maximum",
+          "dimensions": { "QueueName": "e-comerce-golden-bears-billing-queue-$workspace" },
+          "region": "us-east-1"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Mensajes en DLQ (inventory_dlq / billing_dlq) — cualquier valor > 0 requiere atención",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": "CloudWatch",
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "AWS/SQS",
+          "metricName": "ApproximateNumberOfMessagesVisible",
+          "statistic": "Maximum",
+          "dimensions": { "QueueName": "e-comerce-golden-bears-inventory-dlq-$workspace" },
+          "region": "us-east-1"
+        },
+        {
+          "refId": "B",
+          "namespace": "AWS/SQS",
+          "metricName": "ApproximateNumberOfMessagesVisible",
+          "statistic": "Maximum",
+          "dimensions": { "QueueName": "e-comerce-golden-bears-billing-dlq-$workspace" },
+          "region": "us-east-1"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,364 @@
+name: Terraform — Plan + Apply
+
+# Sigue el patrón de la guía (Sección 4): plan corre siempre (push y PR),
+# comenta el diff en el PR y guarda el plan como artifact. Apply es un job
+# aparte gateado por un Environment y aplica el MISMO plan guardado (nunca
+# recalcula en el momento del apply). La validación (fmt/validate, y en
+# nuestro caso también Lambdas/Ansible/frontend/backend) vive dentro de este
+# mismo workflow en vez de un ci.yml aparte, igual que en la guía (Sección
+# 4.2: fmt y validate son steps del job "plan", no un workflow distinto).
+on:
+  push:
+    branches: [develop, qa, main]
+  pull_request:
+    branches: [develop, qa, main]
+
+env:
+  AWS_REGION: us-east-1
+
+# id-token: write es obligatorio para pedirle a GitHub el token OIDC que se
+# intercambia por credenciales temporales de AWS (aws_iam_role.ci en
+# bootstrap/, sin access keys estáticas). pull-requests: write es para poder
+# comentar el plan en el PR.
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+
+  # ─────────────────────────────────────────────
+  # JOB: Mapear la rama (o la rama base del PR) al
+  #      workspace de Terraform correspondiente
+  # ─────────────────────────────────────────────
+  resolve-environment:
+    name: Resolver entorno según la rama
+    runs-on: ubuntu-latest
+    outputs:
+      workspace: ${{ steps.resolve.outputs.workspace }}
+    steps:
+      - name: Mapear rama -> workspace
+        id: resolve
+        run: |
+          BRANCH="${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}"
+          case "$BRANCH" in
+            develop) echo "workspace=dev" >> "$GITHUB_OUTPUT" ;;
+            qa)      echo "workspace=qa" >> "$GITHUB_OUTPUT" ;;
+            main)    echo "workspace=prod" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::Rama sin entorno asociado: $BRANCH"
+              exit 1
+              ;;
+          esac
+
+  # ─────────────────────────────────────────────
+  # JOB: Validar sintaxis de las Lambdas (matrix)
+  # ─────────────────────────────────────────────
+  validate-lambdas:
+    name: Validar Lambdas — ${{ matrix.lambda }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        lambda: [inventario, comprobantes]
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+        working-directory: backend/lambdas/${{ matrix.lambda }}
+      - name: Validar sintaxis del handler
+        run: python -m py_compile handler.py
+        working-directory: backend/lambdas/${{ matrix.lambda }}
+
+  # ─────────────────────────────────────────────
+  # JOB: Validar sintaxis de los playbooks Ansible
+  # ─────────────────────────────────────────────
+  validate-ansible:
+    name: Validar sintaxis de los playbooks de Ansible
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+      - name: Instalar Ansible
+        run: pip install ansible
+      - name: ansible-playbook --syntax-check
+        working-directory: ansible
+        run: |
+          for playbook in playbooks/*.yml; do
+            ansible-playbook --syntax-check "$playbook"
+          done
+
+  # ─────────────────────────────────────────────
+  # JOB: Build de validación del backend (sin push)
+  # ─────────────────────────────────────────────
+  build-backend:
+    name: Build Backend — FastAPI/Python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build imagen — backend
+        uses: docker/build-push-action@v5
+        with:
+          context: backend
+          push: false
+          tags: goldenbears-backend:ci-${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+  # ─────────────────────────────────────────────
+  # JOB: Build de validación del frontend
+  # ─────────────────────────────────────────────
+  build-frontend:
+    name: Build Frontend — React/Vite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Instalar dependencias
+        run: npm ci
+        working-directory: frontend
+      - name: Build — valida el artefacto estático que se despliega a S3
+        run: npm run build
+        working-directory: frontend
+
+  # ─────────────────────────────────────────────
+  # JOB: Empaquetar cada Lambda con sus
+  #      dependencias — se pasa a los jobs
+  #      siguientes como artifact de GitHub
+  # ─────────────────────────────────────────────
+  package-lambdas:
+    name: Empaquetar Lambda — ${{ matrix.lambda }}
+    runs-on: ubuntu-latest
+    needs: resolve-environment
+    strategy:
+      fail-fast: false
+      matrix:
+        lambda: [inventario, comprobantes]
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias y generar el .zip
+        run: |
+          mkdir -p "build/${{ matrix.lambda }}"
+          pip install -r "backend/lambdas/${{ matrix.lambda }}/requirements.txt" \
+            -t "build/${{ matrix.lambda }}" \
+            --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12
+          cp "backend/lambdas/${{ matrix.lambda }}/handler.py" "build/${{ matrix.lambda }}/"
+          (cd "build/${{ matrix.lambda }}" && zip -r "../../lambda_${{ matrix.lambda }}.zip" .)
+
+      - name: Subir el .zip como artifact de GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-${{ matrix.lambda }}
+          path: lambda_${{ matrix.lambda }}.zip
+          retention-days: 1
+
+  # ─────────────────────────────────────────────
+  # JOB: PLAN (siempre corre, en push y en PR) —
+  #      fmt + validate + Checkov + plan, guarda
+  #      el plan como artifact, comenta en el PR
+  # ─────────────────────────────────────────────
+  plan:
+    name: Terraform Plan — ${{ needs.resolve-environment.outputs.workspace }}
+    runs-on: ubuntu-latest
+    needs: [resolve-environment, package-lambdas]
+    environment: ${{ needs.resolve-environment.outputs.workspace }}
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ">=1.10.0"
+
+      - name: Terraform init (backend remoto S3)
+        run: terraform init
+        working-directory: iac
+
+      - name: Seleccionar o crear el workspace del entorno
+        run: |
+          terraform workspace select "${{ needs.resolve-environment.outputs.workspace }}" || \
+          terraform workspace new "${{ needs.resolve-environment.outputs.workspace }}"
+        working-directory: iac
+
+      # Antes de fmt/validate: aws_lambda_function calcula source_code_hash
+      # con filebase64sha256 sobre el .zip real, así que el archivo debe
+      # existir en disco incluso solo para validar (no solo para el plan).
+      - name: Descargar los .zip de las Lambdas (artifacts del job anterior)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: lambda-*
+          path: iac
+          merge-multiple: true
+
+      - name: terraform fmt (verifica formato)
+        run: terraform fmt -check -recursive
+        working-directory: iac
+
+      - name: terraform validate
+        run: terraform validate
+        working-directory: iac
+
+      - name: Checkov — Security Scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: iac
+          config_file: iac/.checkov.yaml
+          output_format: cli
+          soft_fail: true
+
+      - name: terraform plan
+        # Los valores no sensibles vienen de Variables del Environment
+        # (Settings -> Environments -> dev/qa/prod -> Variables) y los
+        # sensibles de Secrets del mismo Environment. Nada de esto vive en
+        # archivos .tfvars del repo.
+        run: |
+          terraform plan -out=tfplan -no-color \
+            -var="region=${{ env.AWS_REGION }}" \
+            -var="project_name=e-comerce-golden-bears" \
+            -var="vpc_cidr=10.0.0.0/16" \
+            -var="aurora_min_capacity=${{ vars.AURORA_MIN_CAPACITY }}" \
+            -var="aurora_max_capacity=${{ vars.AURORA_MAX_CAPACITY }}" \
+            -var="aurora_instance_count=${{ vars.AURORA_INSTANCE_COUNT }}" \
+            -var="aurora_deletion_protection=${{ vars.AURORA_DELETION_PROTECTION }}" \
+            -var="redis_node_type=${{ vars.REDIS_NODE_TYPE }}" \
+            -var="redis_num_cache_clusters=${{ vars.REDIS_NUM_CACHE_CLUSTERS }}" \
+            -var="redis_multi_az_enabled=${{ vars.REDIS_MULTI_AZ_ENABLED }}" \
+            -var="redis_automatic_failover_enabled=${{ vars.REDIS_AUTOMATIC_FAILOVER_ENABLED }}" \
+            -var="ecs_desired_count=${{ vars.ECS_DESIRED_COUNT }}" \
+            -var="ecs_cpu=${{ vars.ECS_CPU }}" \
+            -var="ecs_memory=${{ vars.ECS_MEMORY }}" \
+            -var="log_retention_days=${{ vars.LOG_RETENTION_DAYS }}" \
+            -var="redis_auth_token=${{ secrets.REDIS_AUTH_TOKEN }}" \
+            -var="gmail_app_password=${{ secrets.GMAIL_APP_PASSWORD }}" \
+            -var="gmail_user=${{ vars.GMAIL_USER }}" \
+            -var="nubefact_token=${{ secrets.NUBEFACT_TOKEN }}" \
+            -var="grafana_admin_password=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" \
+            | tee plan_output.txt
+        working-directory: iac
+
+      - name: Comentar plan en el PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('iac/plan_output.txt', 'utf8');
+            const truncated = plan.length > 60000 ? plan.substring(0, 60000) + '...(truncado)' : plan;
+            github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body: '### Terraform Plan — ${{ needs.resolve-environment.outputs.workspace }}\n```\n' + truncated + '\n```'
+            });
+
+      - name: Resumen del plan
+        run: |
+          {
+            echo '## Terraform Plan — ${{ needs.resolve-environment.outputs.workspace }}'
+            echo '```'
+            tail -c 60000 iac/plan_output.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Subir el plan guardado como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ needs.resolve-environment.outputs.workspace }}
+          path: |
+            iac/tfplan
+            iac/lambda_inventario.zip
+            iac/lambda_comprobantes.zip
+          retention-days: 1
+
+  # ─────────────────────────────────────────────
+  # JOB: APPLY (solo en push, nunca en PR;
+  #      requiere aprobación manual vía el
+  #      Environment) — aplica el MISMO plan que
+  #      ya se generó y mostró en el job anterior,
+  #      nunca uno recalculado
+  # ─────────────────────────────────────────────
+  apply:
+    name: Terraform Apply — ${{ needs.resolve-environment.outputs.workspace }}
+    runs-on: ubuntu-latest
+    needs: [resolve-environment, plan, validate-lambdas, validate-ansible, build-backend, build-frontend]
+    if: github.event_name == 'push'
+    # Scopea vars.*/secrets.* de este job al Environment de GitHub que
+    # coincide con el workspace (dev/qa/prod). Activar "Required reviewers"
+    # en el Environment (Settings -> Environments) es lo que pausa este job
+    # hasta que alguien apruebe el plan del job anterior.
+    environment: ${{ needs.resolve-environment.outputs.workspace }}
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Instalar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ">=1.10.0"
+
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Terraform init (backend remoto S3)
+        run: terraform init
+        working-directory: iac
+
+      - name: Seleccionar el workspace del entorno
+        run: terraform workspace select "${{ needs.resolve-environment.outputs.workspace }}"
+        working-directory: iac
+
+      - name: Descargar el plan guardado (mismo que se aprobó)
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ needs.resolve-environment.outputs.workspace }}
+          path: iac
+
+      - name: Terraform apply (aplica el plan guardado tal cual)
+        run: terraform apply -auto-approve tfplan
+        working-directory: iac
+
+      - name: Exportar outputs para los workflows siguientes
+        run: terraform output -json > tf-outputs.json
+        working-directory: iac
+
+      - name: Subir outputs como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-outputs
+          path: iac/tf-outputs.json
+          retention-days: 1

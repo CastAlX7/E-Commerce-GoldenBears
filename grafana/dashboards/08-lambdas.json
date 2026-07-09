@@ -1,0 +1,125 @@
+{
+  "title": "08 - Lambdas (comprobantes / inventario)",
+  "uid": "gb-lambdas",
+  "schemaVersion": 39,
+  "editable": true,
+  "templating": {
+    "list": [
+      {
+        "name": "workspace",
+        "type": "custom",
+        "query": "dev,qa,prod",
+        "current": { "text": "dev", "value": "dev" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Errors",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "datasource": "CloudWatch",
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "AWS/Lambda",
+          "metricName": "Errors",
+          "statistic": "Sum",
+          "dimensions": { "FunctionName": "e-comerce-golden-bears-inventory-$workspace" },
+          "region": "us-east-1"
+        },
+        {
+          "refId": "B",
+          "namespace": "AWS/Lambda",
+          "metricName": "Errors",
+          "statistic": "Sum",
+          "dimensions": { "FunctionName": "e-comerce-golden-bears-billing-$workspace" },
+          "region": "us-east-1"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Duration (avg, p99)",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "datasource": "CloudWatch",
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "AWS/Lambda",
+          "metricName": "Duration",
+          "statistic": "Average",
+          "dimensions": { "FunctionName": "e-comerce-golden-bears-inventory-$workspace" },
+          "region": "us-east-1"
+        },
+        {
+          "refId": "B",
+          "namespace": "AWS/Lambda",
+          "metricName": "Duration",
+          "statistic": "p99",
+          "dimensions": { "FunctionName": "e-comerce-golden-bears-billing-$workspace" },
+          "region": "us-east-1"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Throttles",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": "CloudWatch",
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "AWS/Lambda",
+          "metricName": "Throttles",
+          "statistic": "Sum",
+          "dimensions": { "FunctionName": "e-comerce-golden-bears-inventory-$workspace" },
+          "region": "us-east-1"
+        },
+        {
+          "refId": "B",
+          "namespace": "AWS/Lambda",
+          "metricName": "Throttles",
+          "statistic": "Sum",
+          "dimensions": { "FunctionName": "e-comerce-golden-bears-billing-$workspace" },
+          "region": "us-east-1"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "logs",
+      "title": "Excepciones — Lambda Inventario",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": "CloudWatch",
+      "targets": [
+        {
+          "refId": "A",
+          "queryMode": "Logs",
+          "logGroupNames": ["/aws/lambda/e-comerce-golden-bears-inventory-$workspace"],
+          "region": "us-east-1",
+          "expression": "fields @timestamp, @message | filter @message like /(?i)(error|exception|traceback)/ | sort @timestamp desc | limit 100"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "logs",
+      "title": "Excepciones — Lambda Comprobantes",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": "CloudWatch",
+      "targets": [
+        {
+          "refId": "A",
+          "queryMode": "Logs",
+          "logGroupNames": ["/aws/lambda/e-comerce-golden-bears-billing-$workspace"],
+          "region": "us-east-1",
+          "expression": "fields @timestamp, @message | filter @message like /(?i)(error|exception|traceback)/ | sort @timestamp desc | limit 100"
+        }
+      ]
+    }
+  ]
+}

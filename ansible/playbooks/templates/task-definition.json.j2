@@ -1,0 +1,46 @@
+{
+  "family": "{{ project_name }}-task-{{ workspace }}",
+  "cpu": "{{ tf_outputs.ecs_cpu.value }}",
+  "memory": "{{ tf_outputs.ecs_memory.value }}",
+  "executionRoleArn": "{{ tf_outputs.ecs_task_execution_role_arn.value }}",
+  "taskRoleArn": "{{ tf_outputs.ecs_task_role_arn.value }}",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "containerDefinitions": [
+    {
+      "name": "web",
+      "image": "{{ tf_outputs.ecr_backend_repository_url.value }}:{{ image_tag }}",
+      "essential": true,
+      "readonlyRootFilesystem": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "DB_HOST", "value": "{{ tf_outputs.rds_proxy_endpoint.value }}" },
+        { "name": "DB_PORT", "value": "5432" },
+        { "name": "REDIS_HOST", "value": "{{ tf_outputs.redis_primary_endpoint.value }}" },
+        { "name": "REDIS_PORT", "value": "6379" },
+        { "name": "AWS_REGION", "value": "{{ aws_region }}" },
+        { "name": "SNS_TOPIC_ARN", "value": "{{ tf_outputs.sns_orders_topic_arn.value }}" }
+      ],
+      "secrets": [
+        { "name": "DB_USER", "valueFrom": "{{ tf_outputs.app_db_credentials_secret_arn.value }}:username::" },
+        { "name": "DB_NAME", "valueFrom": "{{ tf_outputs.app_db_credentials_secret_arn.value }}:database::" },
+        { "name": "DB_PASSWORD", "valueFrom": "{{ tf_outputs.aurora_master_user_secret_arn.value }}:password::" },
+        { "name": "REDIS_AUTH_TOKEN", "valueFrom": "{{ tf_outputs.redis_credentials_secret_arn.value }}:auth_token::" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/{{ project_name }}-{{ workspace }}",
+          "awslogs-region": "{{ aws_region }}",
+          "awslogs-stream-prefix": "web"
+        }
+      }
+    }
+  ]
+}

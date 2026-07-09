@@ -7,25 +7,17 @@ from fastapi import HTTPException, status
 
 from app.models.cart import CartItem
 from app.models.product import Product
+from app.services.stock_lock_service import get_locked_quantity
 
 
 async def get_available_stock(db: AsyncSession, product_id: str) -> int:
-    from datetime import datetime, timezone
-    from sqlalchemy import func
-    from app.models.product import StockLock
-
     product_result = await db.execute(select(Product).where(Product.id == product_id))
     product = product_result.scalar_one_or_none()
     if not product or not product.is_enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
-    now = datetime.now(timezone.utc)
-    locked_result = await db.execute(
-        select(func.coalesce(func.sum(StockLock.quantity), 0))
-        .where(StockLock.product_id == product_id, StockLock.expires_at > now, StockLock.order_id == None)
-    )
-    locked_qty = locked_result.scalar_one()
-    return product.stock - int(locked_qty)
+    locked_qty = await get_locked_quantity(product_id)
+    return product.stock - locked_qty
 
 
 async def get_cart(db: AsyncSession, user_id: str):

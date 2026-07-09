@@ -1,0 +1,242 @@
+name: Build y Push a ECR + Frontend
+
+# Sigue el patrón de la guía (Sección 5), encadenado con workflow_run tras el
+# apply de Terraform (Sección 6.5) porque el repo ECR y el bucket/distribución
+# del frontend recién existen después de ese apply.
+on:
+  workflow_run:
+    workflows: ["Terraform — Plan + Apply"]
+    types: [completed]
+    branches: [develop, qa, main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+
+  resolve-environment:
+    name: Resolver entorno según la rama
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    outputs:
+      workspace: ${{ steps.resolve.outputs.workspace }}
+      sha:       ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Mapear rama -> workspace
+        id: resolve
+        run: |
+          BRANCH="${{ github.event.workflow_run.head_branch || github.ref_name }}"
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          case "$BRANCH" in
+            develop) echo "workspace=dev" >> "$GITHUB_OUTPUT" ;;
+            qa)      echo "workspace=qa" >> "$GITHUB_OUTPUT" ;;
+            main)    echo "workspace=prod" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::Rama sin entorno asociado: $BRANCH"
+              exit 1
+              ;;
+          esac
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+  # ─────────────────────────────────────────────
+  # JOB: Build + Push de la imagen del backend
+  # ─────────────────────────────────────────────
+  push-backend-image:
+    name: Push Backend — FastAPI/Python a ECR
+    runs-on: ubuntu-latest
+    needs: resolve-environment
+    environment: ${{ needs.resolve-environment.outputs.workspace }}
+    steps:
+      - name: Checkout del código (commit exacto que disparó el pipeline)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-environment.outputs.sha }}
+
+      - name: Descargar outputs de Terraform (del run que disparó este workflow)
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-outputs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id || github.run_id }}
+
+      - name: Leer URL del repositorio ECR
+        id: tf
+        run: echo "ecr_url=$(jq -r '.ecr_backend_repository_url.value' tf-outputs.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Login a Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build y Push a ECR — backend
+        uses: docker/build-push-action@v5
+        with:
+          context: backend
+          push: true
+          tags: |
+            ${{ steps.tf.outputs.ecr_url }}:${{ needs.resolve-environment.outputs.sha }}
+            ${{ steps.tf.outputs.ecr_url }}:${{ needs.resolve-environment.outputs.workspace }}
+          cache-from: type=gha,scope=backend-${{ needs.resolve-environment.outputs.workspace }}
+          cache-to: type=gha,mode=max,scope=backend-${{ needs.resolve-environment.outputs.workspace }}
+
+      - name: Resumen del job
+        run: |
+          {
+            echo '## Imagen publicada'
+            echo '```'
+            echo '${{ steps.tf.outputs.ecr_url }}:${{ needs.resolve-environment.outputs.sha }}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Volver a subir los outputs (para que ansible-deploy.yml los lea)
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-outputs
+          path: tf-outputs.json
+          retention-days: 1
+
+  # ─────────────────────────────────────────────
+  # JOB: Build + Push de las imágenes de Prometheus
+  #      y Grafana (config/provisioning horneados
+  #      en la imagen) — a diferencia del backend,
+  #      el task definition de observability.tf no
+  #      es "bare", así que basta con forzar un
+  #      nuevo deployment del servicio tras el push.
+  # ─────────────────────────────────────────────
+  push-observability-images:
+    name: Push Prometheus + Grafana a ECR
+    runs-on: ubuntu-latest
+    needs: resolve-environment
+    environment: ${{ needs.resolve-environment.outputs.workspace }}
+    steps:
+      - name: Checkout del código (commit exacto que disparó el pipeline)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-environment.outputs.sha }}
+
+      - name: Descargar outputs de Terraform (del run que disparó este workflow)
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-outputs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id || github.run_id }}
+
+      - name: Leer URLs de los repositorios ECR
+        id: tf
+        run: |
+          echo "prometheus_url=$(jq -r '.ecr_prometheus_repository_url.value' tf-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "grafana_url=$(jq -r '.ecr_grafana_repository_url.value' tf-outputs.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Login a Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build y Push a ECR — Prometheus
+        uses: docker/build-push-action@v5
+        with:
+          context: prometheus
+          push: true
+          tags: |
+            ${{ steps.tf.outputs.prometheus_url }}:${{ needs.resolve-environment.outputs.sha }}
+            ${{ steps.tf.outputs.prometheus_url }}:${{ needs.resolve-environment.outputs.workspace }}
+          cache-from: type=gha,scope=prometheus-${{ needs.resolve-environment.outputs.workspace }}
+          cache-to: type=gha,mode=max,scope=prometheus-${{ needs.resolve-environment.outputs.workspace }}
+
+      - name: Build y Push a ECR — Grafana
+        uses: docker/build-push-action@v5
+        with:
+          context: grafana
+          push: true
+          tags: |
+            ${{ steps.tf.outputs.grafana_url }}:${{ needs.resolve-environment.outputs.sha }}
+            ${{ steps.tf.outputs.grafana_url }}:${{ needs.resolve-environment.outputs.workspace }}
+          cache-from: type=gha,scope=grafana-${{ needs.resolve-environment.outputs.workspace }}
+          cache-to: type=gha,mode=max,scope=grafana-${{ needs.resolve-environment.outputs.workspace }}
+
+      - name: Forzar nuevo deployment de Prometheus y Grafana
+        run: |
+          aws ecs update-service --cluster e-comerce-golden-bears-observability-${{ needs.resolve-environment.outputs.workspace }} \
+            --service e-comerce-golden-bears-prometheus-${{ needs.resolve-environment.outputs.workspace }} \
+            --force-new-deployment --region ${{ env.AWS_REGION }}
+          aws ecs update-service --cluster e-comerce-golden-bears-observability-${{ needs.resolve-environment.outputs.workspace }} \
+            --service e-comerce-golden-bears-grafana-${{ needs.resolve-environment.outputs.workspace }} \
+            --force-new-deployment --region ${{ env.AWS_REGION }}
+
+  # ─────────────────────────────────────────────
+  # JOB: Build del frontend y despliegue a
+  #       S3 + invalidación de CloudFront
+  #       (no está en la guía — el proyecto base
+  #       de la guía no tiene frontend propio)
+  # ─────────────────────────────────────────────
+  deploy-frontend:
+    name: Build & Deploy Frontend — S3/CloudFront
+    runs-on: ubuntu-latest
+    needs: resolve-environment
+    environment: ${{ needs.resolve-environment.outputs.workspace }}
+    steps:
+      - name: Checkout del código (commit exacto que disparó el pipeline)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-environment.outputs.sha }}
+
+      - name: Descargar outputs de Terraform (del run que disparó este workflow)
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-outputs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id || github.run_id }}
+
+      - name: Leer bucket, distribución CloudFront y endpoint del backend
+        id: tf
+        run: |
+          echo "bucket=$(jq -r '.frontend_bucket_name.value' tf-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "distribution_id=$(jq -r '.cloudfront_distribution_id.value' tf-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "api_url=$(jq -r '.api_gateway_endpoint.value' tf-outputs.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build del frontend
+        env:
+          VITE_API_URL: ${{ steps.tf.outputs.api_url }}
+        run: |
+          npm ci
+          npm run build
+        working-directory: frontend
+
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          role-skip-session-tagging: true
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Sincronizar build a S3
+        run: aws s3 sync frontend/dist "s3://${{ steps.tf.outputs.bucket }}" --delete
+
+      - name: Invalidar cache de CloudFront
+        run: aws cloudfront create-invalidation --distribution-id "${{ steps.tf.outputs.distribution_id }}" --paths "/*"

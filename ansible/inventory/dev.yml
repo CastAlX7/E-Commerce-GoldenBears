@@ -1,0 +1,8 @@
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+  vars:
+    aws_region: us-east-1
+    project_name: e-comerce-golden-bears
+    workspace: dev
