@@ -170,6 +170,7 @@ resource "aws_iam_policy" "ci_infra_access" {
           "ecr:*",
           "rds:*",
           "elasticache:*",
+          "elasticloadbalancing:*",
           "lambda:*",
           "sqs:*",
           "sns:*",
@@ -206,6 +207,13 @@ resource "aws_iam_role_policy_attachment" "ci_infra_access" {
 # cualquier bucket que cree iac/) — un Allow amplio en otra policy no se
 # restringe solo, hace falta un Deny explícito para que el rol realmente no
 # pueda borrar el bucket ni sus objetos, aunque se vea comprometido.
+#
+# No se deniega "s3:DeleteObject" en sí: el lockfile nativo de S3 (use_lockfile
+# en iac/backend.tf) necesita borrar el objeto ".tflock" para liberar el lock
+# al terminar cada operación. Como el bucket tiene versionado activado, un
+# DeleteObject normal sobre el .tfstate real no lo destruye (solo agrega un
+# marcador de borrado, la versión anterior sigue recuperable) — lo que sí hay
+# que bloquear es "s3:DeleteObjectVersion", que purga una versión para siempre.
 resource "aws_iam_role_policy" "ci_backend_access" {
   name = "${var.project_name}-ci-backend-access"
   role = aws_iam_role.ci.name
@@ -231,7 +239,6 @@ resource "aws_iam_role_policy" "ci_backend_access" {
         Effect = "Deny"
         Action = [
           "s3:DeleteBucket",
-          "s3:DeleteObject",
           "s3:DeleteObjectVersion",
           "s3:PutBucketPolicy",
           "s3:PutBucketAcl"
