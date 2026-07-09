@@ -40,10 +40,10 @@ resource "aws_rds_cluster" "aurora" {
   database_name                       = "goldenbearsdb"
   master_username                     = "dbadmin"
   manage_master_user_password         = true
-  master_user_secret_kms_key_id       = aws_kms_key.shared.arn
+  master_user_secret_kms_key_id       = aws_kms_key.secrets.arn
   iam_database_authentication_enabled = true
   storage_encrypted                   = true
-  kms_key_id                          = aws_kms_key.shared.arn
+  kms_key_id                          = aws_kms_key.database.arn
   db_cluster_parameter_group_name     = aws_rds_cluster_parameter_group.aurora_pg.name
   db_subnet_group_name                = aws_db_subnet_group.aurora.name
   vpc_security_group_ids              = [aws_security_group.aurora.id]
@@ -77,7 +77,7 @@ resource "aws_rds_cluster_instance" "aurora_instances" {
   monitoring_interval             = 60
   monitoring_role_arn             = aws_iam_role.rds_enhanced_monitoring.arn
   performance_insights_enabled    = true
-  performance_insights_kms_key_id = aws_kms_key.shared.arn
+  performance_insights_kms_key_id = aws_kms_key.database.arn
   auto_minor_version_upgrade      = true
 
   tags = {
