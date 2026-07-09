@@ -6,15 +6,3 @@ all:
     aws_region: us-east-1
     project_name: e-comerce-golden-bears
     workspace: qa
-    aurora_max_capacity: 4.0
-    aurora_min_capacity: 0.5
-    aurora_instance_count: 1
-    aurora_deletion_protection: false
-    redis_node_type: cache.t3.small
-    redis_num_cache_clusters: 1
-    redis_multi_az_enabled: false
-    redis_automatic_failover_enabled: false
-    ecs_desired_count: 1
-    ecs_cpu: 512
-    ecs_memory: 1024
-    log_retention_days: 14
