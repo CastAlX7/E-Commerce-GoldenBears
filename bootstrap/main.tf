@@ -112,12 +112,12 @@ resource "aws_iam_openid_connect_provider" "github_actions" {
 resource "aws_iam_role" "ci" {
   name = "${var.project_name}-ci"
 
-  # Las 3 ramas que disparan el CD (develop/qa/main) pueden asumir este rol
-  # para aplicar infraestructura de verdad, y además cualquier Pull Request
-  # del mismo repo puede asumirlo para el job "plan" de terraform.yml (que
-  # solo hace terraform plan de solo lectura, nunca apply — el job "apply"
-  # exige "environment:" + push, un PR nunca dispara ese job). No cubre PRs
-  # de forks externos (ref "pull_request", no "pull_request_target").
+  # Cualquier evento (push a cualquier rama, pull_request, etc.) del mismo
+  # repo puede asumir este rol. Se restringe qué puede hacer cada uno vía los
+  # jobs del workflow (el "apply" exige "environment:" + push, un PR nunca lo
+  # dispara), no vía el Trust Policy — un patrón con wildcard es más tolerante
+  # a variaciones del "sub" que emite GitHub y es lo que recomienda la guía
+  # del curso para este mismo error (StringLike con "repo:ORG/REPO:*").
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -126,18 +126,13 @@ resource "aws_iam_role" "ci" {
         Principal = {
           Federated = aws_iam_openid_connect_provider.github_actions.arn
         }
-        Action = "sts:AssumeRoleWithWebIdentity"
+        Action = ["sts:AssumeRoleWithWebIdentity", "sts:TagSession"]
         Condition = {
           StringEquals = {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = [
-              "repo:${var.github_repository}:ref:refs/heads/develop",
-              "repo:${var.github_repository}:ref:refs/heads/qa",
-              "repo:${var.github_repository}:ref:refs/heads/main",
-              "repo:${var.github_repository}:pull_request"
-            ]
+            "token.actions.githubusercontent.com:sub" = "repo:${var.github_repository}:*"
           }
         }
       }
