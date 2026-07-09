@@ -74,6 +74,10 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda_inventory" {
   event_source_arn = aws_sqs_queue.inventory_queue.arn
   function_name    = aws_lambda_function.lambda_inventario.arn
   batch_size       = 10
+  # El handler devuelve batchItemFailures para los registros que fallan —
+  # sin esto, Lambda ignora ese campo y SQS trata todo el batch como
+  # exitoso aunque haya fallado, sin reintentar ni caer al DLQ.
+  function_response_types = ["ReportBatchItemFailures"]
 }
 
 resource "aws_lambda_function" "lambda_comprobantes" {
@@ -127,6 +131,8 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda_billing" {
   event_source_arn = aws_sqs_queue.billing_queue.arn
   function_name    = aws_lambda_function.lambda_comprobantes.arn
   batch_size       = 10
+  # Mismo motivo que sqs_to_lambda_inventory.
+  function_response_types = ["ReportBatchItemFailures"]
 }
 
 resource "random_id" "signer_suffix" {

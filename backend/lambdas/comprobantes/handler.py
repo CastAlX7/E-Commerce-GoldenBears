@@ -247,6 +247,8 @@ def lambda_handler(event, context):
     """
     logger.info(f"Evento SQS de Comprobantes recibido: {json.dumps(event)}")
 
+    batch_item_failures = []
+
     for record in event.get('Records', []):
         order_id = "unknown"
         try:
@@ -259,6 +261,7 @@ def lambda_handler(event, context):
                 data = _fetch_order(conn, order_id)
                 if not data:
                     logger.error(f"Orden {order_id} no encontrada en la base de datos")
+                    batch_item_failures.append({"itemIdentifier": record["messageId"]})
                     continue
 
                 order, items = data["order"], data["items"]
@@ -273,8 +276,9 @@ def lambda_handler(event, context):
                 conn.close()
         except Exception as e:
             logger.error(f"Error procesando registro de comprobantes para la orden {order_id}: {str(e)}")
+            # Reportamos el mensaje como fallido en vez de tragarnos el error:
+            # así SQS lo reintenta y, si sigue fallando, cae al DLQ en vez de
+            # darse por procesado (comprobante/correo) sin haberlo estado.
+            batch_item_failures.append({"itemIdentifier": record["messageId"]})
 
-    return {
-        'statusCode': 200,
-        'body': json.dumps('Facturación procesada con éxito')
-    }
+    return {"batchItemFailures": batch_item_failures}
