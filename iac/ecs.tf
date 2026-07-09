@@ -1,3 +1,16 @@
+resource "aws_cloudwatch_log_group" "ecs_backend" {
+  name              = "/ecs/${var.project_name}-${terraform.workspace}"
+  retention_in_days = var.log_retention_days
+  kms_key_id        = aws_kms_key.shared.arn
+
+  tags = {
+    Name        = "${var.project_name}-ecs-backend-logs-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-ecs-cluster-${terraform.workspace}"
 
@@ -25,9 +38,10 @@ resource "aws_ecs_task_definition" "main" {
 
   container_definitions = jsonencode([{
     name      = "web"
-    image     = "nginx:latest"
+    image     = "${aws_ecr_repository.backend.repository_url}:${terraform.workspace}"
     essential = true
 
+    # Forzar el sistema de archivos raíz a solo lectura
     readonlyRootFilesystem = true
 
     portMappings = [{
@@ -36,17 +50,14 @@ resource "aws_ecs_task_definition" "main" {
       protocol      = "tcp"
     }]
 
-    environment = [
-      { name = "ENVIRONMENT",  value = terraform.workspace },
-      { name = "PROJECT_NAME", value = var.project_name },
-    ]
-
-    secrets = [
-      {
-        name      = "CULQI_SECRET_KEY"
-        valueFrom = "${aws_secretsmanager_secret.culqi_credentials.arn}:secret_key::"
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.ecs_backend.name
+        "awslogs-region"        = var.region
+        "awslogs-stream-prefix" = "web"
       }
-    ]
+    }
   }])
 
   tags = {
@@ -78,12 +89,14 @@ resource "aws_ecs_service" "main" {
     assign_public_ip = false
   }
 
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
+
   tags = {
     Name        = "${var.project_name}-svc-${terraform.workspace}"
     Environment = terraform.workspace
     Project     = var.project_name
     ManagedBy   = "Terraform"
   }
-
-  depends_on = [aws_lb_listener.main]
 }

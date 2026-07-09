@@ -30,15 +30,14 @@ resource "aws_apigatewayv2_integration" "main" {
   integration_method     = "ANY"
   connection_type        = "VPC_LINK"
   connection_id          = aws_apigatewayv2_vpc_link.main.id
-  content_handling_strategy = "CONVERT_TO_TEXT"
   payload_format_version = "1.0"
 }
 
 resource "aws_apigatewayv2_route" "main" {
   # checkov:skip=CKV_AWS_309: La autenticación y autorización se manejan internamente en los contenedores ECS.
-  api_id    = aws_apigatewayv2_api.main.id
-  route_key = "ANY /{proxy+}"
-  target    = "integrations/${aws_apigatewayv2_integration.main.id}"
+  api_id             = aws_apigatewayv2_api.main.id
+  route_key          = "ANY /{proxy+}"
+  target             = "integrations/${aws_apigatewayv2_integration.main.id}"
   authorization_type = "NONE"
 }
 

@@ -8,8 +8,7 @@ resource "aws_db_proxy" "aurora_proxy" {
 
   auth {
     auth_scheme = "SECRETS"
-    iam_auth    = "REQUIRED"
-    # Referencia dinámica al secreto auto-generado por Aurora (manage_master_user_password=true)
+    iam_auth    = "DISABLED"
     secret_arn  = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
   }
 
@@ -31,7 +30,7 @@ resource "aws_db_proxy_default_target_group" "aurora_proxy" {
 }
 
 resource "aws_db_proxy_target" "aurora_proxy" {
-  db_proxy_name          = aws_db_proxy.aurora_proxy.name
-  target_group_name      = aws_db_proxy_default_target_group.aurora_proxy.name
-  db_cluster_identifier  = aws_rds_cluster.aurora.cluster_identifier
+  db_proxy_name         = aws_db_proxy.aurora_proxy.name
+  target_group_name     = aws_db_proxy_default_target_group.aurora_proxy.name
+  db_cluster_identifier = aws_rds_cluster.aurora.cluster_identifier
 }

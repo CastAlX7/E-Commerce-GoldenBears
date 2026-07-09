@@ -1,0 +1,44 @@
+{
+  "family": "{{ project_name }}-task-{{ workspace }}",
+  "cpu": "{{ ecs_cpu }}",
+  "memory": "{{ ecs_memory }}",
+  "executionRoleArn": "{{ ecs_task_execution_role_arn }}",
+  "taskRoleArn": "{{ ecs_task_role_arn }}",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "containerDefinitions": [
+    {
+      "name": "web",
+      "image": "{{ account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com/{{ project_name }}-backend-{{ workspace }}:{{ image_tag }}",
+      "essential": true,
+      "readonlyRootFilesystem": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "DB_HOST", "value": "{{ rds_proxy_endpoint }}" },
+        { "name": "DB_PORT", "value": "5432" },
+        { "name": "REDIS_HOST", "value": "{{ redis_primary_endpoint }}" },
+        { "name": "REDIS_PORT", "value": "6379" }
+      ],
+      "secrets": [
+        { "name": "DB_USER", "valueFrom": "{{ app_db_credentials_secret_arn }}:username::" },
+        { "name": "DB_NAME", "valueFrom": "{{ app_db_credentials_secret_arn }}:database::" },
+        { "name": "DB_PASSWORD", "valueFrom": "{{ aurora_master_user_secret_arn }}:password::" },
+        { "name": "REDIS_AUTH_TOKEN", "valueFrom": "{{ redis_credentials_secret_arn }}:auth_token::" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/{{ project_name }}-{{ workspace }}",
+          "awslogs-region": "{{ aws_region }}",
+          "awslogs-stream-prefix": "web"
+        }
+      }
+    }
+  ]
+}

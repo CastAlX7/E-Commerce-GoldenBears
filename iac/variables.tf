@@ -1,9 +1,3 @@
-variable "enable_dnssec" {
-  type        = bool
-  description = "Habilita DNSSEC en la hosted zone. Requiere que los NS del registrar ya apunten a Route53 antes de activarlo."
-  default     = false
-}
-
 variable "region" {
   type        = string
   description = "Región AWS principal"

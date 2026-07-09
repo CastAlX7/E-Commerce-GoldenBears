@@ -257,33 +257,53 @@ Terraform listará todos los recursos a eliminar y pedirá confirmación con `ye
 
 ## Automatización con Ansible
 
-El directorio `ansible/` contiene playbooks que automatizan el ciclo completo de despliegue. Los inventarios en `ansible/inventory/` definen las variables por entorno (`dev.yml`, `qa.yml`, `prod.yml`).
+El directorio `ansible/` contiene los playbooks que conectan la app con la infraestructura de `iac/`. Todo corre contra `localhost` (`ansible_connection: local` en los inventarios) — Ansible no se conecta por SSH a nada, ejecuta comandos AWS CLI/Terraform en la misma máquina donde se invoca `ansible-playbook`.
+
+### Estructura
+
+```
+ansible/
+├── ansible.cfg
+├── group_vars/
+│   └── all.yml           # project_name, aws_region
+├── inventory/
+│   ├── dev.yml            # fuente real de variables por entorno (workspace, sizing)
+│   ├── qa.yml
+│   └── prod.yml
+└── playbooks/
+    ├── populate_secrets.yml
+    ├── deploy.yml
+    ├── deploy_ecs.yml
+    ├── setup_env.yml
+    └── templates/
+        ├── env.j2
+        └── task-definition.json.j2
+```
+
+Todos los paths que apuntan fuera de `ansible/` (`iac/`, `backend/`) usan `{{ playbook_dir }}` como prefijo, así que cada playbook funciona igual sin importar desde qué directorio se invoque `ansible-playbook`.
 
 ### Playbooks disponibles
 
 | Playbook | Descripción |
 |---|---|
-| `setup_env.yml` | Obtiene secretos de AWS Secrets Manager y genera el `backend/.env` |
-| `generate_tfvars.yml` | Genera el archivo `.tfvars` para Terraform desde plantillas |
 | `populate_secrets.yml` | Pobla AWS Secrets Manager con los valores reales (NubeFact, Redis) |
-| `build_and_push.yml` | Construye imágenes Docker, las sube a ECR y empaqueta las Lambdas |
-| `deploy.yml` | Ejecuta `terraform init`, selecciona/crea el workspace y aplica la infraestructura |
+| `deploy.yml` | Ejecuta `terraform init`, selecciona/crea el workspace y aplica la infraestructura (`iac/`) |
+| `deploy_ecs.yml` | Renderiza una nueva task definition con la imagen ya publicada en ECR (`image_tag`), la registra y actualiza el servicio ECS a esa revisión |
+| `setup_env.yml` | Obtiene secretos de AWS Secrets Manager y genera el `backend/.env` (desarrollo local) |
+
+`deploy_ecs.yml` es el único playbook que toca la app en ejecución, y no construye nada — asume que la imagen ya está publicada en ECR (la publica el CI/CD). Renderiza `templates/task-definition.json.j2` (family, cpu/memoria, roles IAM —obtenidos con `terraform output`—, y la imagen con el tag recibido), registra esa revisión (`aws ecs register-task-definition`), apunta el servicio a ella (`aws ecs update-service`) y espera con `aws ecs wait services-stable`. El tag inmutable por deploy (en vez de reusar siempre `:latest`) permite rollback real: basta con reapuntar el servicio a la revisión anterior de la misma family.
+
+Para que Ansible pueda registrar esas revisiones sin que el siguiente `terraform apply` las revierta, `iac/ecs.tf` tiene `lifecycle { ignore_changes = [task_definition] }` en `aws_ecs_service.main` — Terraform sigue gestionando el resto del servicio (red, load balancer, tags), pero deja de forzar cuál revisión de la task definition está activa. Los ARNs de los roles IAM que necesita el template se exponen como outputs de Terraform: `ecs_task_execution_role_arn` y `ecs_task_role_arn` (`iac/outputs.tf`).
 
 ### Ejecutar un playbook
 
 ```bash
 cd ansible
 
-# Generar variables de Terraform para el entorno dev
-ansible-playbook -i inventory/dev.yml playbooks/generate_tfvars.yml
-
 # Poblar secretos en AWS Secrets Manager
 export REDIS_AUTH_TOKEN="tu_token_secreto"
 export NUBEFACT_TOKEN="tu_token_nubefact"
 ansible-playbook -i inventory/dev.yml playbooks/populate_secrets.yml
-
-# Build y push de imágenes a ECR + empaquetar Lambdas
-ansible-playbook -i inventory/dev.yml playbooks/build_and_push.yml
 
 # Despliegue completo de infraestructura con Terraform
 export REDIS_AUTH_TOKEN="tu_token_secreto"
@@ -291,9 +311,28 @@ ansible-playbook -i inventory/dev.yml playbooks/deploy.yml
 
 # Generar backend/.env desde Secrets Manager (post-despliegue)
 ansible-playbook -i inventory/dev.yml playbooks/setup_env.yml
+
+# Desplegar una imagen ya publicada en ECR (build/push lo hace CI/CD)
+ansible-playbook -i inventory/dev.yml playbooks/deploy_ecs.yml -e "image_tag=<git-sha-o-tag>"
 ```
 
 > Reemplaza `inventory/dev.yml` por `inventory/qa.yml` o `inventory/prod.yml` según el entorno objetivo.
+
+### Requisitos para el CI/CD (GitHub Actions)
+
+Para que el pipeline de CI/CD sea compatible con estos playbooks sin duplicar ni pisar responsabilidades:
+
+1. **Build + push de la imagen del backend a ECR** es responsabilidad exclusiva del CI/CD, tageada con el **SHA del commit** (no solo `latest` ni el nombre del workspace) — `deploy_ecs.yml` necesita ese tag como `image_tag` para registrar la nueva revisión.
+2. **Build del frontend (`npm run build`) y `aws s3 sync` al bucket** también es responsabilidad del CI/CD — no vive en ningún playbook.
+3. **Empaquetado de las Lambdas** (`backend/lambdas/inventario`, `backend/lambdas/comprobantes` → `.zip`) tampoco vive en Ansible — `iac/lambda.tf` lee esos `.zip` como archivos locales al momento de `terraform apply`, así que el CI/CD debe generarlos **antes** de cualquier `terraform apply`, para no partir el despliegue en dos corridas.
+4. Después de publicar la imagen, el job de CD debe invocar `ansible-playbook -i inventory/<env>.yml playbooks/deploy_ecs.yml -e "image_tag=<sha>"`.
+5. Las credenciales de AWS que use el CI/CD necesitan, como mínimo: push a ECR, `ecs:DescribeTaskDefinition`, `ecs:RegisterTaskDefinition`, `ecs:UpdateService`, `ecs:DescribeServices` (para el `wait services-stable`), y `sts:GetCallerIdentity`.
+6. El runner necesita `aws` CLI y Ansible instalados (en `ubuntu-latest` de GitHub Actions, `aws` ya viene preinstalado; Ansible se instala con `pip install ansible`).
+7. `deploy_ecs.yml` asume que Terraform ya corrió al menos una vez para ese workspace (la task definition family y los outputs `ecs_task_execution_role_arn`/`ecs_task_role_arn` deben existir). Orden de un primer despliegue: Lambdas empaquetadas → `terraform apply` → primer push de imagen a ECR (con el tag que Terraform puso en `ecs.tf`) → recién ahí `deploy_ecs.yml` tiene sentido para deploys subsecuentes.
+
+### Advertencia sobre código desactualizado
+
+`populate_secrets.yml` crea/actualiza secretos con nombres `golden-bears-nubefact-credentials-{{workspace}}` y `golden-bears-redis-credentials-{{workspace}}`. Los nombres reales en `iac/secrets_manager.tf` son jerárquicos con el project_name actual (p. ej. `e-comerce-golden-bears/{{workspace}}/billing/nubefact`). Este playbook apunta a secretos que no existen — necesita actualizarse antes de usarse.
 
 ---
 

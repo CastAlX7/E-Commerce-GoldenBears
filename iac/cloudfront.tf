@@ -46,29 +46,10 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
 
-  origin {
-    domain_name              = "${var.project_name}-frontend-${terraform.workspace}-replica.s3.amazonaws.com"
-    origin_id                = "s3-replica"
-    origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
-  }
-
-  origin_group {
-    origin_id = "s3_origin_group"
-    failover_criteria {
-      status_codes = [500, 502, 503, 504]
-    }
-    member {
-      origin_id = "s3-primary"
-    }
-    member {
-      origin_id = "s3-replica"
-    }
-  }
-
   default_cache_behavior {
     allowed_methods            = ["GET", "HEAD"]
     cached_methods             = ["GET", "HEAD"]
-    target_origin_id           = "s3_origin_group"
+    target_origin_id           = "s3-primary"
     viewer_protocol_policy     = "redirect-to-https"
     response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
     min_ttl                    = 0
@@ -90,16 +71,10 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     }
   }
 
-  logging_config {
-    bucket          = aws_s3_bucket.logs.bucket_regional_domain_name
-    prefix          = "cloudfront/"
-    include_cookies = false
-  }
+
 
   viewer_certificate {
-    acm_certificate_arn = aws_acm_certificate_validation.frontend_cert_validation.certificate_arn
-    ssl_support_method       = "sni-only"
-    minimum_protocol_version = "TLSv1.2_2021"
+    cloudfront_default_certificate = true
   }
 
   tags = {
@@ -108,6 +83,4 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     Project     = var.project_name
     ManagedBy   = "Terraform"
   }
-
-  depends_on = [aws_s3_bucket_acl.logs]
 }

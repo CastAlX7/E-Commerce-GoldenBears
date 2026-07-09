@@ -59,7 +59,7 @@ resource "aws_sqs_queue_policy" "billing_queue_policy" {
         }
       },
       {
-        Sid    = "AllowS3Notification"
+        Sid    = "AllowS3Notifications"
         Effect = "Allow"
         Principal = {
           Service = "s3.amazonaws.com"
@@ -67,7 +67,7 @@ resource "aws_sqs_queue_policy" "billing_queue_policy" {
         Action   = "sqs:SendMessage"
         Resource = aws_sqs_queue.billing_queue.arn
         Condition = {
-          ArnLike = {
+          ArnEquals = {
             "aws:SourceArn" = aws_s3_bucket.documental.arn
           }
         }
@@ -127,8 +127,8 @@ resource "aws_sqs_queue_policy" "inventory_queue_policy" {
       Principal = {
         Service = "sns.amazonaws.com"
       }
-      Action    = "sqs:SendMessage"
-      Resource  = aws_sqs_queue.inventory_queue.arn
+      Action   = "sqs:SendMessage"
+      Resource = aws_sqs_queue.inventory_queue.arn
       Condition = {
         ArnEquals = {
           "aws:SourceArn" = aws_sns_topic.orders_topic.arn

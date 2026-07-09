@@ -71,11 +71,18 @@ resource "aws_iam_role_policy" "rds_proxy" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = "secretsmanager:GetSecretValue"
-      Resource = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
-    }]
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "secretsmanager:GetSecretValue"
+        Resource = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = "kms:Decrypt"
+        Resource = aws_kms_key.shared.arn
+      }
+    ]
   })
 }
 
@@ -138,20 +145,22 @@ resource "aws_iam_role_policy_attachment" "ecs_task_exec" {
 }
 
 resource "aws_iam_role_policy" "ecs_task_exec_secrets" {
-  name = "${var.project_name}-ecs-exec-secrets-policy-${terraform.workspace}"
+  name = "${var.project_name}-ecs-task-exec-secrets-policy-${terraform.workspace}"
   role = aws_iam_role.ecs_task_exec.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowReadCulqiSecret"
         Effect = "Allow"
         Action = "secretsmanager:GetSecretValue"
-        Resource = aws_secretsmanager_secret.culqi_credentials.arn
+        Resource = [
+          aws_secretsmanager_secret.app_db_credentials.arn,
+          aws_rds_cluster.aurora.master_user_secret[0].secret_arn,
+          aws_secretsmanager_secret.redis_credentials.arn
+        ]
       },
       {
-        Sid      = "AllowKMSDecryptForSecrets"
         Effect   = "Allow"
         Action   = "kms:Decrypt"
         Resource = aws_kms_key.shared.arn
@@ -192,29 +201,6 @@ resource "aws_iam_role_policy" "ecs_task" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
-          "sqs:SendMessage",
-          "sqs:ReceiveMessage",
-          "sqs:DeleteMessage",
-          "sqs:GetQueueAttributes"
-        ]
-        Resource = aws_sqs_queue.inventory_queue.arn
-      },
-      {
-        Effect   = "Allow"
-        Action   = "sns:Publish"
-        Resource = aws_sns_topic.orders_topic.arn
-      },
-      {
-        Effect = "Allow"
-        Action = "secretsmanager:GetSecretValue"
-        Resource = [
-          aws_secretsmanager_secret.app_db_credentials.arn,
-          aws_secretsmanager_secret.culqi_credentials.arn,
-        ]
-      },
-      {
         Effect   = "Allow"
         Action   = "kms:Decrypt"
         Resource = aws_kms_key.shared.arn
@@ -248,7 +234,6 @@ resource "aws_iam_role" "lambda_inventario" {
 }
 
 resource "aws_iam_role_policy" "lambda_inventario" {
-  # checkov:skip=CKV_AWS_355:DescribeNetworkInterfaces requiere Resource '*' por diseno de AWS API para Lambdas en VPC.
   name = "${var.project_name}-lambda-inventory-policy-${terraform.workspace}"
   role = aws_iam_role.lambda_inventario.id
 
@@ -259,9 +244,16 @@ resource "aws_iam_role_policy" "lambda_inventario" {
         Effect = "Allow"
         Action = [
           "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
           "ec2:DeleteNetworkInterface",
-          "ec2:DescribeNetworkInterfaces"
+          "ec2:AssignPrivateIpAddresses",
+          "ec2:UnassignPrivateIpAddresses"
         ]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "ec2:DescribeNetworkInterfaces"
         Resource = "*"
       },
       {
@@ -275,8 +267,10 @@ resource "aws_iam_role_policy" "lambda_inventario" {
         Resource = aws_sqs_queue.inventory_queue.arn
       },
       {
-        Effect   = "Allow"
-        Action   = "sqs:SendMessage"
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage"
+        ]
         Resource = aws_sqs_queue.inventory_dlq.arn
       },
       {
@@ -292,6 +286,14 @@ resource "aws_iam_role_policy" "lambda_inventario" {
           "logs:PutLogEvents"
         ]
         Resource = "${aws_cloudwatch_log_group.lambda_inventory.arn}:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+        ]
+        Resource = aws_kms_key.shared.arn
       }
     ]
   })
@@ -331,15 +333,6 @@ resource "aws_iam_role_policy" "lambda_comprobantes" {
       {
         Effect = "Allow"
         Action = [
-          "ec2:CreateNetworkInterface",
-          "ec2:DeleteNetworkInterface",
-          "ec2:DescribeNetworkInterfaces"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
           "sqs:ReceiveMessage",
           "sqs:DeleteMessage",
           "sqs:GetQueueAttributes",
@@ -348,8 +341,10 @@ resource "aws_iam_role_policy" "lambda_comprobantes" {
         Resource = aws_sqs_queue.billing_queue.arn
       },
       {
-        Effect   = "Allow"
-        Action   = "sqs:SendMessage"
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage"
+        ]
         Resource = aws_sqs_queue.billing_dlq.arn
       },
       {
@@ -374,6 +369,25 @@ resource "aws_iam_role_policy" "lambda_comprobantes" {
           "logs:PutLogEvents"
         ]
         Resource = "${aws_cloudwatch_log_group.lambda_billing.arn}:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface",
+          "ec2:AssignPrivateIpAddresses",
+          "ec2:UnassignPrivateIpAddresses"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+        ]
+        Resource = aws_kms_key.shared.arn
       }
     ]
   })
@@ -430,3 +444,4 @@ resource "aws_iam_role_policy" "s3_replication_documental" {
     ]
   })
 }
+

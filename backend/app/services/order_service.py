@@ -1,7 +1,8 @@
+import asyncio
 import os
 import uuid
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -10,10 +11,18 @@ from fastapi import HTTPException, status
 import httpx
 
 from app.models.cart import CartItem
-from app.models.product import Product, StockLock
+from app.models.product import Product
 from app.models.order import Order, OrderItem, BillingDetail, PaymentToken
 from app.models.user import User
 from app.schemas.order import CheckoutConfirmRequest
+from app.services.stock_lock_service import create_stock_lock, get_locked_quantity, release_user_locks
+from app.services.sns_service import publish_order_created
+
+
+def _determine_recipient_email(order: Order, user: User) -> str:
+    if order.receipt_type == "factura" and order.billing_detail and order.billing_detail.billing_email:
+        return order.billing_detail.billing_email
+    return user.email
 
 CULQI_SECRET_KEY = os.getenv("CULQI_SECRET_KEY", "sk_test_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
@@ -68,8 +77,6 @@ async def initiate_checkout(db: AsyncSession, user_id: str, shipping_city: str, 
     if not cart_items:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cart is empty")
 
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(minutes=15)
     subtotal = Decimal("0")
     items_summary = []
 
@@ -81,15 +88,7 @@ async def initiate_checkout(db: AsyncSession, user_id: str, shipping_city: str, 
                 detail=f"Product '{product.name}' is no longer available",
             )
 
-        locked_result = await db.execute(
-            select(StockLock).where(
-                StockLock.product_id == product.id,
-                StockLock.expires_at > now,
-                StockLock.order_id == None,
-            )
-        )
-        active_locks = locked_result.scalars().all()
-        total_locked = sum(lock.quantity for lock in active_locks)
+        total_locked = await get_locked_quantity(product.id)
         available = product.stock - total_locked
 
         if cart_item.quantity > available:
@@ -98,14 +97,7 @@ async def initiate_checkout(db: AsyncSession, user_id: str, shipping_city: str, 
                 detail=f"Insufficient stock for '{product.name}'. Available: {available}",
             )
 
-        lock = StockLock(
-            id=str(uuid.uuid4()),
-            product_id=product.id,
-            quantity=cart_item.quantity,
-            locked_at=now,
-            expires_at=expires_at,
-        )
-        db.add(lock)
+        await create_stock_lock(product.id, user_id, cart_item.quantity)
 
         item_subtotal = product.price * cart_item.quantity
         subtotal += item_subtotal
@@ -210,9 +202,9 @@ async def confirm_checkout(db: AsyncSession, user: User, data: CheckoutConfirmRe
     db.add(order)
     await db.flush()
 
+    # El descuento de stock lo hace Lambda Inventario en background, via SNS
     for oi in order_items:
         product = oi["product"]
-        product.stock -= oi["quantity"]
         db.add(OrderItem(
             id=str(uuid.uuid4()),
             order_id=order_id,
@@ -246,11 +238,8 @@ async def confirm_checkout(db: AsyncSession, user: User, data: CheckoutConfirmRe
     db.add(PaymentToken(**payment_kwargs))
 
     # Release stock locks for this user
-    locks_result = await db.execute(
-        select(StockLock).where(StockLock.order_id == None, StockLock.expires_at > now)
-    )
-    for lock in locks_result.scalars().all():
-        await db.delete(lock)
+    for oi in order_items:
+        await release_user_locks(oi["product"].id, user.id)
 
     # Clear cart
     for cart_item in cart_items:
@@ -260,33 +249,20 @@ async def confirm_checkout(db: AsyncSession, user: User, data: CheckoutConfirmRe
 
     completed_order = await get_order(db, order_id, user.id)
 
-    # Generar PDF y lanzar envío de correo en background (no bloquea la respuesta)
-    import asyncio
-    import logging
-    email_address = None
-    email_scheduled = False
-    try:
-        from app.services.pdf_service import generate_receipt_pdf
-        from app.services.email_service import send_receipt_email, _determine_recipient_email
-        pdf_bytes = generate_receipt_pdf(completed_order, user)
-        email_address = _determine_recipient_email(completed_order, user)
+    # Publicar a SNS en background (no bloquea la respuesta): dispara Lambda Inventario
+    # (descuenta stock) y Lambda Comprobantes (genera PDF, sube a S3 y manda el correo)
+    items_payload = [{"product_id": oi["product"].id, "quantity": oi["quantity"]} for oi in order_items]
+    billing_payload = {
+        "dni": data.billing.dni,
+        "razon_social": data.billing.razon_social,
+        "ruc": data.billing.ruc,
+        "direccion_fiscal": data.billing.direccion_fiscal,
+        "billing_email": data.billing.billing_email,
+    }
+    email_address = _determine_recipient_email(completed_order, user)
+    asyncio.create_task(publish_order_created(order_id, items_payload, float(total), billing_payload))
 
-        async def _send():
-            try:
-                await send_receipt_email(completed_order, user, pdf_bytes)
-            except Exception as e:
-                logging.getLogger(__name__).error(
-                    "Error enviando correo en background para orden %s: %s", order_id, e
-                )
-
-        asyncio.create_task(_send())
-        email_scheduled = True
-    except Exception as exc:
-        logging.getLogger(__name__).error(
-            "Error generando PDF para la orden %s: %s", order_id, exc
-        )
-
-    return {"order": completed_order, "email_sent": email_scheduled, "email_address": email_address}
+    return {"order": completed_order, "email_sent": True, "email_address": email_address}
 
 
 async def get_order(db: AsyncSession, order_id: str, user_id: str) -> Order:

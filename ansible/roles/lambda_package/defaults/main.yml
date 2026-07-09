@@ -1,2 +1,0 @@
-lambda_src_base: "../../backend/lambdas"
-lambda_dest: "../../iac"
