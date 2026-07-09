@@ -34,6 +34,22 @@ resource "aws_cloudfront_response_headers_policy" "security_headers" {
   }
 }
 
+# Policies administradas de AWS: sin cachear nada en /api/* (cada respuesta
+# depende del usuario/token) y reenviando todo (headers, query string,
+# cookies) menos el header Host, que CloudFront debe reescribir para poder
+# conectarse al origen real de API Gateway.
+data "aws_cloudfront_cache_policy" "caching_disabled" {
+  name = "Managed-CachingDisabled"
+}
+
+data "aws_cloudfront_origin_request_policy" "all_viewer_except_host" {
+  name = "Managed-AllViewerExceptHostHeader"
+}
+
+data "aws_cloudfront_cache_policy" "caching_optimized" {
+  name = "Managed-CachingOptimized"
+}
+
 resource "aws_cloudfront_distribution" "frontend_cdn" {
   enabled             = true
   is_ipv6_enabled     = true
@@ -44,6 +60,22 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
     origin_id                = "s3-primary"
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
+  }
+
+  # El frontend llama a rutas relativas "/api/*" (ver frontend/src/api/client.js,
+  # baseURL: "/api") esperando que el mismo dominio de CloudFront las reenvíe
+  # al backend real — sin este origen + behavior, esas llamadas caen en el
+  # origen de S3 y devuelven AccessDenied.
+  origin {
+    domain_name = replace(aws_apigatewayv2_api.main.api_endpoint, "https://", "")
+    origin_id    = "api-gateway"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port              = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols    = ["TLSv1.2"]
+    }
   }
 
   default_cache_behavior {
@@ -62,6 +94,31 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
         forward = "none"
       }
     }
+  }
+
+  ordered_cache_behavior {
+    path_pattern               = "/api/*"
+    allowed_methods             = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods               = ["GET", "HEAD"]
+    target_origin_id            = "api-gateway"
+    viewer_protocol_policy      = "https-only"
+    cache_policy_id             = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id    = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+    response_headers_policy_id  = aws_cloudfront_response_headers_policy.security_headers.id
+  }
+
+  # Imágenes de producto (backend/app/main.py monta StaticFiles en /static) —
+  # mismo motivo que /api/*, pero con caché activado porque el contenido de
+  # una imagen no cambia una vez subida.
+  ordered_cache_behavior {
+    path_pattern               = "/static/*"
+    allowed_methods             = ["GET", "HEAD"]
+    cached_methods               = ["GET", "HEAD"]
+    target_origin_id            = "api-gateway"
+    viewer_protocol_policy      = "https-only"
+    cache_policy_id             = data.aws_cloudfront_cache_policy.caching_optimized.id
+    origin_request_policy_id    = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+    response_headers_policy_id  = aws_cloudfront_response_headers_policy.security_headers.id
   }
 
   restrictions {
