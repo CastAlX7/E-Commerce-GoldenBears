@@ -13,5 +13,5 @@ variable "project_name" {
 variable "github_repository" {
   description = "Repositorio de GitHub (owner/repo) autorizado a asumir el rol de CI vía OIDC"
   type        = string
-  default     = "CastAlX7/E-Commerce-GoldenBears"
+  default     = "GoldenBears-ECommerce/E-Commerce-GoldenBears"
 }
