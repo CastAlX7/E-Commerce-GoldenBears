@@ -15,14 +15,12 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    GMAIL_USER: str = "stilesvcc@gmail.com"
-    GMAIL_APP_PASSWORD: str = ""
-    GMAIL_FROM_NAME: str = "Golden Bears"
-    EMAIL_ENABLED: bool = True
-
     REDIS_HOST: str = ""
     REDIS_PORT: str = "6379"
     REDIS_AUTH_TOKEN: str = ""
+
+    AWS_REGION: str = "us-east-1"
+    SNS_TOPIC_ARN: str = ""
 
     class Config:
         env_file = ".env"
