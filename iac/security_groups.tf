@@ -349,3 +349,12 @@ resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_from_lambda_compro
   to_port                      = 443
   referenced_security_group_id = aws_security_group.lambda_comprobantes.id
 }
+
+resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_from_observability" {
+  security_group_id            = aws_security_group.vpc_endpoints.id
+  description                  = "Ingress desde Grafana (observability) para leer su secret de admin (HTTPS)"
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
+  referenced_security_group_id = aws_security_group.observability.id
+}
