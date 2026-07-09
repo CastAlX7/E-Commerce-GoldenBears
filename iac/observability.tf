@@ -228,6 +228,34 @@ resource "aws_efs_mount_target" "observability_b" {
   security_groups = [aws_security_group.observability.id]
 }
 
+# Grafana corre como usuario no-root (UID/GID 472) dentro del contenedor
+# oficial — sin un Access Point que fuerce ese ownership al montar, la raíz
+# de EFS queda de root y Grafana no puede escribir ("Permission denied").
+resource "aws_efs_access_point" "grafana" {
+  file_system_id = aws_efs_file_system.observability.id
+
+  posix_user {
+    uid = 472
+    gid = 472
+  }
+
+  root_directory {
+    path = "/grafana"
+    creation_info {
+      owner_uid   = 472
+      owner_gid   = 472
+      permissions = "755"
+    }
+  }
+
+  tags = {
+    Name        = "${var.project_name}-grafana-efs-ap-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
 # --- IAM Roles for Observability Tasks ---
 resource "aws_iam_role" "observability_exec" {
   name = "${var.project_name}-observability-exec-role-${terraform.workspace}"
@@ -307,6 +335,32 @@ resource "aws_iam_role" "grafana_task" {
         Effect = "Allow"
         Principal = {
           Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# Permiso para montar el volumen vía el Access Point (autorización IAM del
+# mount, además del ownership POSIX que ya fuerza el propio Access Point).
+resource "aws_iam_role_policy" "grafana_efs" {
+  name = "${var.project_name}-grafana-efs-policy-${terraform.workspace}"
+  role = aws_iam_role.grafana_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticfilesystem:ClientMount",
+          "elasticfilesystem:ClientWrite"
+        ]
+        Resource = aws_efs_file_system.observability.arn
+        Condition = {
+          StringEquals = {
+            "elasticfilesystem:AccessPointArn" = aws_efs_access_point.grafana.arn
+          }
         }
       }
     ]
@@ -468,8 +522,12 @@ resource "aws_ecs_task_definition" "grafana" {
   volume {
     name = "grafana-storage"
     efs_volume_configuration {
-      file_system_id = aws_efs_file_system.observability.id
-      root_directory = "/"
+      file_system_id          = aws_efs_file_system.observability.id
+      transit_encryption      = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.grafana.id
+        iam             = "ENABLED"
+      }
     }
   }
 
