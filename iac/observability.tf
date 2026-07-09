@@ -73,7 +73,7 @@ resource "aws_vpc_security_group_ingress_rule" "grafana_web" {
 
 resource "aws_vpc_security_group_egress_rule" "observability_egress" {
   security_group_id = aws_security_group.observability.id
-  description        = "Allow all outbound traffic"
+  description       = "Allow all outbound traffic"
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
 }
@@ -119,7 +119,7 @@ resource "aws_security_group" "grafana_alb" {
 
 resource "aws_vpc_security_group_ingress_rule" "grafana_alb_from_internet" {
   security_group_id = aws_security_group.grafana_alb.id
-  description        = "Acceso público a Grafana"
+  description       = "Acceso público a Grafana"
   ip_protocol       = "tcp"
   from_port         = 80
   to_port           = 80
@@ -388,13 +388,13 @@ resource "aws_ecs_task_definition" "prometheus" {
   task_role_arn            = aws_iam_role.prometheus_task.arn
 
   volume {
-    name = "prometheus-tsdb"
+    name                = "prometheus-tsdb"
     configure_at_launch = true
   }
 
   container_definitions = jsonencode([{
     name      = "prometheus"
-    image = "${aws_ecr_repository.prometheus.repository_url}:${terraform.workspace}"
+    image     = "${aws_ecr_repository.prometheus.repository_url}:${terraform.workspace}"
     essential = true
     command   = ["--storage.tsdb.retention.time=15d", "--config.file=/etc/prometheus/prometheus.yml"]
     portMappings = [{
@@ -430,10 +430,10 @@ resource "aws_ecs_service" "prometheus" {
   volume_configuration {
     name = "prometheus-tsdb"
     managed_ebs_volume {
-      role_arn          = aws_iam_role.ecs_infrastructure.arn
-      size_in_gb        = 20
-      volume_type       = "gp3"
-      file_system_type  = "ext4"
+      role_arn         = aws_iam_role.ecs_infrastructure.arn
+      size_in_gb       = 20
+      volume_type      = "gp3"
+      file_system_type = "ext4"
     }
   }
 
