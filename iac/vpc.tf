@@ -14,7 +14,7 @@ resource "aws_vpc" "main" {
 resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
   name              = "/aws/vpc-flow-logs/${var.project_name}-${terraform.workspace}"
   retention_in_days = var.log_retention_days
-  kms_key_id        = aws_kms_key.shared.arn
+  kms_key_id        = aws_kms_key.logs.arn
 
   tags = {
     Name        = "${var.project_name}-vpc-flow-logs-${terraform.workspace}"
