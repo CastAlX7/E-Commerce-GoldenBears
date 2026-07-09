@@ -60,6 +60,9 @@ class BillingDetail(Base):
     ruc: Mapped[str | None] = mapped_column(String(11), nullable=True)
     direccion_fiscal: Mapped[str | None] = mapped_column(String(500), nullable=True)
     billing_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    invoice_status: Mapped[str] = mapped_column(SAEnum("pending", "issued", "failed", name="invoice_status"), default="pending", nullable=False)
+    invoice_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    invoiced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     order: Mapped["Order"] = relationship("Order", back_populates="billing_detail")
 
