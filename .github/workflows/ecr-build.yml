@@ -9,6 +9,10 @@ on:
     types: [completed]
     branches: [develop, qa, main]
   workflow_dispatch:
+    inputs:
+      run_id:
+        description: "ID del run de 'Terraform -- Plan + Apply' del que descargar tf-outputs (número al final de su URL en Actions)"
+        required: true
 
 env:
   AWS_REGION: us-east-1
@@ -62,7 +66,7 @@ jobs:
         with:
           name: tf-outputs
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id || github.run_id }}
+          run-id: ${{ github.event.workflow_run.id || inputs.run_id }}
 
       - name: Leer URL del repositorio ECR
         id: tf
@@ -132,7 +136,7 @@ jobs:
         with:
           name: tf-outputs
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id || github.run_id }}
+          run-id: ${{ github.event.workflow_run.id || inputs.run_id }}
 
       - name: Leer URLs de los repositorios ECR
         id: tf
@@ -206,7 +210,7 @@ jobs:
         with:
           name: tf-outputs
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id || github.run_id }}
+          run-id: ${{ github.event.workflow_run.id || inputs.run_id }}
 
       - name: Leer bucket, distribución CloudFront y endpoint del backend
         id: tf

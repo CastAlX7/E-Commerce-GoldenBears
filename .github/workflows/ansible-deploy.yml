@@ -12,6 +12,10 @@ on:
     types: [completed]
     branches: [develop, qa, main]
   workflow_dispatch:
+    inputs:
+      run_id:
+        description: "ID del run de 'Build y Push a ECR + Frontend' del que descargar tf-outputs (número al final de su URL en Actions)"
+        required: true
 
 env:
   AWS_REGION: us-east-1
@@ -70,7 +74,7 @@ jobs:
         with:
           name: tf-outputs
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id || github.run_id }}
+          run-id: ${{ github.event.workflow_run.id || inputs.run_id }}
 
       - name: Configurar credenciales de AWS
         uses: aws-actions/configure-aws-credentials@v4
