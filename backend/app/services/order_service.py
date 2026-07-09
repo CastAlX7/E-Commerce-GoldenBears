@@ -1,3 +1,4 @@
+import asyncio
 import os
 import uuid
 import hashlib
@@ -15,6 +16,13 @@ from app.models.order import Order, OrderItem, BillingDetail, PaymentToken
 from app.models.user import User
 from app.schemas.order import CheckoutConfirmRequest
 from app.services.stock_lock_service import create_stock_lock, get_locked_quantity, release_user_locks
+from app.services.sns_service import publish_order_created
+
+
+def _determine_recipient_email(order: Order, user: User) -> str:
+    if order.receipt_type == "factura" and order.billing_detail and order.billing_detail.billing_email:
+        return order.billing_detail.billing_email
+    return user.email
 
 CULQI_SECRET_KEY = os.getenv("CULQI_SECRET_KEY", "sk_test_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 
@@ -194,9 +202,9 @@ async def confirm_checkout(db: AsyncSession, user: User, data: CheckoutConfirmRe
     db.add(order)
     await db.flush()
 
+    # El descuento de stock lo hace Lambda Inventario en background, via SNS
     for oi in order_items:
         product = oi["product"]
-        product.stock -= oi["quantity"]
         db.add(OrderItem(
             id=str(uuid.uuid4()),
             order_id=order_id,
@@ -241,33 +249,20 @@ async def confirm_checkout(db: AsyncSession, user: User, data: CheckoutConfirmRe
 
     completed_order = await get_order(db, order_id, user.id)
 
-    # Generar PDF y lanzar envío de correo en background (no bloquea la respuesta)
-    import asyncio
-    import logging
-    email_address = None
-    email_scheduled = False
-    try:
-        from app.services.pdf_service import generate_receipt_pdf
-        from app.services.email_service import send_receipt_email, _determine_recipient_email
-        pdf_bytes = generate_receipt_pdf(completed_order, user)
-        email_address = _determine_recipient_email(completed_order, user)
+    # Publicar a SNS en background (no bloquea la respuesta): dispara Lambda Inventario
+    # (descuenta stock) y Lambda Comprobantes (genera PDF, sube a S3 y manda el correo)
+    items_payload = [{"product_id": oi["product"].id, "quantity": oi["quantity"]} for oi in order_items]
+    billing_payload = {
+        "dni": data.billing.dni,
+        "razon_social": data.billing.razon_social,
+        "ruc": data.billing.ruc,
+        "direccion_fiscal": data.billing.direccion_fiscal,
+        "billing_email": data.billing.billing_email,
+    }
+    email_address = _determine_recipient_email(completed_order, user)
+    asyncio.create_task(publish_order_created(order_id, items_payload, float(total), billing_payload))
 
-        async def _send():
-            try:
-                await send_receipt_email(completed_order, user, pdf_bytes)
-            except Exception as e:
-                logging.getLogger(__name__).error(
-                    "Error enviando correo en background para orden %s: %s", order_id, e
-                )
-
-        asyncio.create_task(_send())
-        email_scheduled = True
-    except Exception as exc:
-        logging.getLogger(__name__).error(
-            "Error generando PDF para la orden %s: %s", order_id, exc
-        )
-
-    return {"order": completed_order, "email_sent": email_scheduled, "email_address": email_address}
+    return {"order": completed_order, "email_sent": True, "email_address": email_address}
 
 
 async def get_order(db: AsyncSession, order_id: str, user_id: str) -> Order:
