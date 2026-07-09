@@ -44,7 +44,7 @@ resource "aws_apigatewayv2_route" "main" {
 resource "aws_cloudwatch_log_group" "apigw_access_logs" {
   name              = "/aws/apigateway/${var.project_name}-access-logs-${terraform.workspace}"
   retention_in_days = var.log_retention_days
-  kms_key_id        = aws_kms_key.shared.arn
+  kms_key_id        = aws_kms_key.logs.arn
 
   tags = {
     Name        = "${var.project_name}-apigw-logs-${terraform.workspace}"

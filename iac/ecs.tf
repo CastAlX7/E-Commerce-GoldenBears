@@ -1,7 +1,7 @@
 resource "aws_cloudwatch_log_group" "ecs_backend" {
   name              = "/ecs/${var.project_name}-${terraform.workspace}"
   retention_in_days = var.log_retention_days
-  kms_key_id        = aws_kms_key.shared.arn
+  kms_key_id        = aws_kms_key.logs.arn
 
   tags = {
     Name        = "${var.project_name}-ecs-backend-logs-${terraform.workspace}"

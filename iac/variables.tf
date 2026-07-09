@@ -8,11 +8,6 @@ variable "project_name" {
   description = "Nombre del proyecto, usado como prefijo en recursos"
 }
 
-variable "domain_name" {
-  type        = string
-  description = "Dominio principal del marketplace"
-}
-
 variable "vpc_cidr" {
   type        = string
   description = "Bloque CIDR de la VPC"
@@ -84,4 +79,21 @@ variable "redis_auth_token" {
   type        = string
   sensitive   = true
   description = "Token de autenticación para Redis (TLS)"
+}
+
+variable "gmail_app_password" {
+  type        = string
+  sensitive   = true
+  description = "App Password de Gmail para el envío de correos desde Lambda Comprobantes"
+}
+
+variable "gmail_user" {
+  type        = string
+  description = "Dirección de Gmail desde la que Lambda Comprobantes envía los correos (no es sensible, solo un email)"
+}
+
+variable "nubefact_token" {
+  type        = string
+  sensitive   = true
+  description = "Token de la API de NubeFact/SUNAT (placeholder mientras la integración esté mockeada)"
 }

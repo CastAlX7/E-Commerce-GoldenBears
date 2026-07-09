@@ -61,3 +61,38 @@ output "redis_credentials_secret_arn" {
   value       = aws_secretsmanager_secret.redis_credentials.arn
   sensitive   = true
 }
+
+output "sns_orders_topic_arn" {
+  description = "ARN del tópico SNS de pedidos (fanout a inventario y comprobantes)"
+  value       = aws_sns_topic.orders_topic.arn
+}
+
+output "account_id" {
+  description = "ID de la cuenta de AWS donde se despliega la infraestructura"
+  value       = data.aws_caller_identity.current.account_id
+}
+
+output "ecr_backend_repository_url" {
+  description = "URL del repositorio ECR del backend para este workspace"
+  value       = aws_ecr_repository.backend.repository_url
+}
+
+output "frontend_bucket_name" {
+  description = "Bucket S3 donde se sirve el frontend (origen de CloudFront)"
+  value       = aws_s3_bucket.frontend.id
+}
+
+output "cloudfront_distribution_id" {
+  description = "ID de la distribución CloudFront del frontend, para invalidar cache en cada deploy"
+  value       = aws_cloudfront_distribution.frontend_cdn.id
+}
+
+output "ecs_cpu" {
+  description = "CPU de la task definition base (para que Ansible arme la revisión real con el mismo valor, sin duplicarlo)"
+  value       = var.ecs_cpu
+}
+
+output "ecs_memory" {
+  description = "Memoria de la task definition base (para que Ansible arme la revisión real con el mismo valor, sin duplicarlo)"
+  value       = var.ecs_memory
+}

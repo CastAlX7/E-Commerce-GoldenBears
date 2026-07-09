@@ -80,7 +80,7 @@ resource "aws_iam_role_policy" "rds_proxy" {
       {
         Effect   = "Allow"
         Action   = "kms:Decrypt"
-        Resource = aws_kms_key.shared.arn
+        Resource = aws_kms_key.secrets.arn
       }
     ]
   })
@@ -163,7 +163,7 @@ resource "aws_iam_role_policy" "ecs_task_exec_secrets" {
       {
         Effect   = "Allow"
         Action   = "kms:Decrypt"
-        Resource = aws_kms_key.shared.arn
+        Resource = aws_kms_key.secrets.arn
       }
     ]
   })
@@ -202,8 +202,8 @@ resource "aws_iam_role_policy" "ecs_task" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = "kms:Decrypt"
-        Resource = aws_kms_key.shared.arn
+        Action   = "sns:Publish"
+        Resource = aws_sns_topic.orders_topic.arn
       }
     ]
   })
@@ -252,11 +252,6 @@ resource "aws_iam_role_policy" "lambda_inventario" {
         Resource = "*"
       },
       {
-        Effect   = "Allow"
-        Action   = "ec2:DescribeNetworkInterfaces"
-        Resource = "*"
-      },
-      {
         Effect = "Allow"
         Action = [
           "sqs:ReceiveMessage",
@@ -275,8 +270,8 @@ resource "aws_iam_role_policy" "lambda_inventario" {
       },
       {
         Effect   = "Allow"
-        Action   = "rds-db:connect"
-        Resource = "arn:aws:rds-db:${var.region}:${data.aws_caller_identity.current.account_id}:dbuser:${aws_db_proxy.aurora_proxy.id}/inventory_user"
+        Action   = "secretsmanager:GetSecretValue"
+        Resource = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
       },
       {
         Effect = "Allow"
@@ -288,12 +283,17 @@ resource "aws_iam_role_policy" "lambda_inventario" {
         Resource = "${aws_cloudwatch_log_group.lambda_inventory.arn}:*"
       },
       {
+        Effect   = "Allow"
+        Action   = "kms:Decrypt"
+        Resource = aws_kms_key.secrets.arn
+      },
+      {
         Effect = "Allow"
         Action = [
           "kms:Decrypt",
           "kms:GenerateDataKey"
         ]
-        Resource = aws_kms_key.shared.arn
+        Resource = aws_kms_key.compute.arn
       }
     ]
   })
@@ -357,9 +357,13 @@ resource "aws_iam_role_policy" "lambda_comprobantes" {
         Resource = "${aws_s3_bucket.documental.arn}/facturas/*"
       },
       {
-        Effect   = "Allow"
-        Action   = "secretsmanager:GetSecretValue"
-        Resource = aws_secretsmanager_secret.nubefact_credentials.arn
+        Effect = "Allow"
+        Action = "secretsmanager:GetSecretValue"
+        Resource = [
+          aws_secretsmanager_secret.nubefact_credentials.arn,
+          aws_rds_cluster.aurora.master_user_secret[0].secret_arn,
+          aws_secretsmanager_secret.gmail_credentials.arn
+        ]
       },
       {
         Effect = "Allow"
@@ -382,12 +386,17 @@ resource "aws_iam_role_policy" "lambda_comprobantes" {
         Resource = "*"
       },
       {
+        Effect   = "Allow"
+        Action   = "kms:Decrypt"
+        Resource = aws_kms_key.secrets.arn
+      },
+      {
         Effect = "Allow"
         Action = [
           "kms:Decrypt",
           "kms:GenerateDataKey"
         ]
-        Resource = aws_kms_key.shared.arn
+        Resource = aws_kms_key.compute.arn
       }
     ]
   })

@@ -281,6 +281,15 @@ resource "aws_vpc_security_group_egress_rule" "lambda_comprobantes_to_internet_h
   cidr_ipv4         = "0.0.0.0/0"
 }
 
+resource "aws_vpc_security_group_egress_rule" "lambda_comprobantes_to_internet_smtps" {
+  security_group_id = aws_security_group.lambda_comprobantes.id
+  description       = "Salida SMTPS a Gmail via NAT (envio de comprobantes)"
+  ip_protocol       = "tcp"
+  from_port         = 465
+  to_port           = 465
+  cidr_ipv4         = "0.0.0.0/0"
+}
+
 resource "aws_vpc_security_group_egress_rule" "lambda_comprobantes_to_vpc_endpoints" {
   security_group_id            = aws_security_group.lambda_comprobantes.id
   description                  = "Salida HTTPS a VPC Endpoints"

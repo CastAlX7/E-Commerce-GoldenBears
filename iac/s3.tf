@@ -25,7 +25,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
-      kms_master_key_id = aws_kms_key.shared.arn
+      kms_master_key_id = aws_kms_key.s3.arn
     }
     bucket_key_enabled = true
   }
@@ -83,7 +83,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "frontend" {
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
-      kms_master_key_id = aws_kms_key.shared.arn
+      kms_master_key_id = aws_kms_key.s3.arn
     }
     bucket_key_enabled = true
   }
@@ -206,20 +206,6 @@ resource "aws_s3_bucket_policy" "alb_logs" {
       Resource = "${aws_s3_bucket.documental.arn}/alb/*"
     }]
   })
-}
-
-resource "aws_s3_bucket_notification" "documental" {
-  bucket = aws_s3_bucket.documental.id
-
-  queue {
-    queue_arn     = aws_sqs_queue.billing_queue.arn
-    events        = ["s3:ObjectCreated:*"]
-    filter_prefix = "facturas/"
-  }
-
-  depends_on = [
-    aws_sqs_queue_policy.billing_queue_policy
-  ]
 }
 
 resource "aws_s3_bucket" "documental_replica" {

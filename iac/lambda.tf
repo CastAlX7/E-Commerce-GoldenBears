@@ -1,7 +1,7 @@
 resource "aws_cloudwatch_log_group" "lambda_inventory" {
   name              = "/aws/lambda/${var.project_name}-inventory-${terraform.workspace}"
   retention_in_days = var.log_retention_days
-  kms_key_id        = aws_kms_key.shared.arn
+  kms_key_id        = aws_kms_key.logs.arn
 
   tags = {
     Name        = "${var.project_name}-lambda-inventory-logs-${terraform.workspace}"
@@ -14,7 +14,7 @@ resource "aws_cloudwatch_log_group" "lambda_inventory" {
 resource "aws_cloudwatch_log_group" "lambda_billing" {
   name              = "/aws/lambda/${var.project_name}-billing-${terraform.workspace}"
   retention_in_days = var.log_retention_days
-  kms_key_id        = aws_kms_key.shared.arn
+  kms_key_id        = aws_kms_key.logs.arn
 
   tags = {
     Name        = "${var.project_name}-lambda-billing-logs-${terraform.workspace}"
@@ -24,18 +24,18 @@ resource "aws_cloudwatch_log_group" "lambda_billing" {
   }
 }
 
-# CRÍTICO: REEMPLAZAR placeholder.zip CON EL ARTIFACT REAL DE LA LAMBDA ANTES DE APLICAR EN PRODUCCIÓN
 resource "aws_lambda_function" "lambda_inventario" {
-  filename      = "${path.module}/lambda_inventario.zip"
-  function_name = "${var.project_name}-inventory-${terraform.workspace}"
-  role          = aws_iam_role.lambda_inventario.arn
-  runtime       = "python3.12"
-  handler       = "handler.lambda_handler"
-  timeout       = 30
+  filename         = "${path.module}/lambda_inventario.zip"
+  source_code_hash = filebase64sha256("${path.module}/lambda_inventario.zip")
+  function_name    = "${var.project_name}-inventory-${terraform.workspace}"
+  role             = aws_iam_role.lambda_inventario.arn
+  runtime          = "python3.12"
+  handler          = "handler.lambda_handler"
+  timeout          = 30
 
   # reserved_concurrent_executions = 10
 
-  kms_key_arn = aws_kms_key.shared.arn
+  kms_key_arn = aws_kms_key.compute.arn
 
   depends_on = [
     aws_iam_role_policy.lambda_inventario,
@@ -47,18 +47,15 @@ resource "aws_lambda_function" "lambda_inventario" {
     security_group_ids = [aws_security_group.lambda_inventario.id]
   }
 
-  tracing_config {
-    mode = "Active"
-  }
-
-  dead_letter_config {
-    target_arn = aws_sqs_queue.inventory_dlq.arn
-  }
-
   environment {
     variables = {
-      ENVIRONMENT  = terraform.workspace
-      PROJECT_NAME = var.project_name
+      ENVIRONMENT            = terraform.workspace
+      PROJECT_NAME           = var.project_name
+      DB_HOST                = aws_db_proxy.aurora_proxy.endpoint
+      DB_PORT                = "5432"
+      DB_USER                = "dbadmin"
+      DB_NAME                = "goldenbearsdb"
+      DB_PASSWORD_SECRET_ARN = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
     }
   }
 
@@ -79,18 +76,18 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda_inventory" {
   batch_size       = 10
 }
 
-# CRÍTICO: REEMPLAZAR placeholder.zip CON EL ARTIFACT REAL DE LA LAMBDA ANTES DE APLICAR EN PRODUCCIÓN
 resource "aws_lambda_function" "lambda_comprobantes" {
-  filename      = "${path.module}/lambda_comprobantes.zip"
-  function_name = "${var.project_name}-billing-${terraform.workspace}"
-  role          = aws_iam_role.lambda_comprobantes.arn
-  runtime       = "python3.12"
-  handler       = "handler.lambda_handler"
-  timeout       = 60
+  filename         = "${path.module}/lambda_comprobantes.zip"
+  source_code_hash = filebase64sha256("${path.module}/lambda_comprobantes.zip")
+  function_name    = "${var.project_name}-billing-${terraform.workspace}"
+  role             = aws_iam_role.lambda_comprobantes.arn
+  runtime          = "python3.12"
+  handler          = "handler.lambda_handler"
+  timeout          = 60
 
   # reserved_concurrent_executions = 10
 
-  kms_key_arn = aws_kms_key.shared.arn
+  kms_key_arn = aws_kms_key.compute.arn
 
   depends_on = [
     aws_iam_role_policy.lambda_comprobantes,
@@ -102,18 +99,16 @@ resource "aws_lambda_function" "lambda_comprobantes" {
     security_group_ids = [aws_security_group.lambda_comprobantes.id]
   }
 
-  tracing_config {
-    mode = "Active"
-  }
-
-  dead_letter_config {
-    target_arn = aws_sqs_queue.billing_dlq.arn
-  }
-
   environment {
     variables = {
-      ENVIRONMENT  = terraform.workspace
-      PROJECT_NAME = var.project_name
+      ENVIRONMENT            = terraform.workspace
+      PROJECT_NAME           = var.project_name
+      DB_HOST                = aws_db_proxy.aurora_proxy.endpoint
+      DB_PORT                = "5432"
+      DB_USER                = "dbadmin"
+      DB_NAME                = "goldenbearsdb"
+      DB_PASSWORD_SECRET_ARN = aws_rds_cluster.aurora.master_user_secret[0].secret_arn
+      GMAIL_SECRET_ARN       = aws_secretsmanager_secret.gmail_credentials.arn
     }
   }
 
