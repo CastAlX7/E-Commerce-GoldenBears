@@ -83,6 +83,10 @@ resource "aws_ecs_service" "main" {
     container_port   = 8000
   }
 
+  service_registries {
+    registry_arn = aws_service_discovery_service.backend.arn
+  }
+
   network_configuration {
     security_groups  = [aws_security_group.ecs.id]
     subnets          = [aws_subnet.private_app_a.id, aws_subnet.private_app_b.id]
