@@ -46,6 +46,7 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+tf-outputs.json
 
 # --- IDEs y Editores ---
 .vscode/
