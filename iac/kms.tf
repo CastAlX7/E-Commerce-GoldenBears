@@ -181,6 +181,25 @@ resource "aws_kms_key" "s3" {
           "kms:GenerateDataKey"
         ]
         Resource = "*"
+      },
+      {
+        # CloudFront (via OAC) necesita descifrar el objeto para servirlo —
+        # sin esto, GetObject falla (403 AccessDenied) aunque el bucket
+        # policy sí le de s3:GetObject, porque el paso de descifrado con
+        # KMS es aparte. HeadObject no lo necesita (no devuelve contenido),
+        # por eso solo falla el GET, no el HEAD.
+        Sid    = "AllowCloudFrontDecrypt"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        }
+        Action   = "kms:Decrypt"
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:SourceArn" = aws_cloudfront_distribution.frontend_cdn.arn
+          }
+        }
       }
     ]
   })
