@@ -9,7 +9,10 @@
         "name": "workspace",
         "type": "custom",
         "query": "dev,qa,prod",
-        "current": { "text": "dev", "value": "dev" }
+        "current": {
+          "text": "dev",
+          "value": "dev"
+        }
       }
     ]
   },
@@ -18,16 +21,35 @@
       "id": 1,
       "type": "timeseries",
       "title": "ACUUtilization (%)",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
-      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
           "namespace": "AWS/RDS",
           "metricName": "ACUUtilization",
           "statistic": "Average",
-          "dimensions": { "DBClusterIdentifier": "e-comerce-golden-bears-aurora-cluster-$workspace" },
-          "region": "us-east-1"
+          "dimensions": {
+            "DBClusterIdentifier": "e-comerce-golden-bears-aurora-cluster-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         }
       ]
     },
@@ -35,24 +57,54 @@
       "id": 2,
       "type": "timeseries",
       "title": "FreeableMemory / DiskQueueDepth (por instancia)",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
-      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
           "namespace": "AWS/RDS",
           "metricName": "FreeableMemory",
           "statistic": "Average",
-          "dimensions": { "DBInstanceIdentifier": "e-comerce-golden-bears-aurora-node-0-$workspace" },
-          "region": "us-east-1"
+          "dimensions": {
+            "DBInstanceIdentifier": "e-comerce-golden-bears-aurora-node-0-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         },
         {
           "refId": "B",
           "namespace": "AWS/RDS",
           "metricName": "DiskQueueDepth",
           "statistic": "Average",
-          "dimensions": { "DBInstanceIdentifier": "e-comerce-golden-bears-aurora-node-0-$workspace" },
-          "region": "us-east-1"
+          "dimensions": {
+            "DBInstanceIdentifier": "e-comerce-golden-bears-aurora-node-0-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         }
       ]
     },
@@ -60,16 +112,35 @@
       "id": 3,
       "type": "timeseries",
       "title": "ReplicaLag (solo aplica si hay más de 1 instancia — qa/prod)",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
-      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
           "namespace": "AWS/RDS",
           "metricName": "AuroraReplicaLag",
           "statistic": "Average",
-          "dimensions": { "DBInstanceIdentifier": "e-comerce-golden-bears-aurora-node-1-$workspace" },
-          "region": "us-east-1"
+          "dimensions": {
+            "DBInstanceIdentifier": "e-comerce-golden-bears-aurora-node-1-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         }
       ]
     }

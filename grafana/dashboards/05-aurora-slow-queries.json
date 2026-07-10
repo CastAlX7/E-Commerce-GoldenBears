@@ -9,7 +9,10 @@
         "name": "workspace",
         "type": "custom",
         "query": "dev,qa,prod",
-        "current": { "text": "dev", "value": "dev" }
+        "current": {
+          "text": "dev",
+          "value": "dev"
+        }
       }
     ]
   },
@@ -18,15 +21,30 @@
       "id": 1,
       "type": "logs",
       "title": "Queries > 1s (log_min_duration_statement=1000 en aurora_pg)",
-      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 0 },
-      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
           "queryMode": "Logs",
-          "logGroupNames": ["/aws/rds/cluster/e-comerce-golden-bears-aurora-cluster-$workspace/postgresql"],
+          "logGroupNames": [
+            "/aws/rds/cluster/e-comerce-golden-bears-aurora-cluster-$workspace/postgresql"
+          ],
           "region": "us-east-1",
-          "expression": "fields @timestamp, @message | filter @message like /duration:/ | sort @timestamp desc | limit 100"
+          "expression": "fields @timestamp, @message | filter @message like /duration:/ | sort @timestamp desc | limit 100",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "id": ""
         }
       ]
     },
@@ -34,16 +52,33 @@
       "id": 2,
       "type": "timeseries",
       "title": "Cantidad de queries lentas por período (5 min)",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
-      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
           "queryMode": "Logs",
-          "statsGroups": ["bin(5m)"],
-          "logGroupNames": ["/aws/rds/cluster/e-comerce-golden-bears-aurora-cluster-$workspace/postgresql"],
+          "statsGroups": [
+            "bin(5m)"
+          ],
+          "logGroupNames": [
+            "/aws/rds/cluster/e-comerce-golden-bears-aurora-cluster-$workspace/postgresql"
+          ],
           "region": "us-east-1",
-          "expression": "filter @message like /duration:/ | stats count(*) as slow_queries by bin(5m)"
+          "expression": "filter @message like /duration:/ | stats count(*) as slow_queries by bin(5m)",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "id": ""
         }
       ]
     }

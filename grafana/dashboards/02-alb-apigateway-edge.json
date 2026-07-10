@@ -9,14 +9,20 @@
         "name": "workspace",
         "type": "custom",
         "query": "dev,qa,prod",
-        "current": { "text": "dev", "value": "dev" }
+        "current": {
+          "text": "dev",
+          "value": "dev"
+        }
       },
       {
         "name": "api_id",
         "type": "textbox",
         "label": "API Gateway ApiId",
         "description": "ID autogenerado del HTTP API — copiarlo desde la consola o el output api_gateway_endpoint",
-        "current": { "text": "", "value": "" }
+        "current": {
+          "text": "",
+          "value": ""
+        }
       }
     ]
   },
@@ -25,24 +31,54 @@
       "id": 1,
       "type": "timeseries",
       "title": "ALB — TargetResponseTime (avg, p99)",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
-      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
           "namespace": "AWS/ApplicationELB",
           "metricName": "TargetResponseTime",
           "statistic": "Average",
-          "dimensions": { "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace" },
-          "region": "us-east-1"
+          "dimensions": {
+            "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         },
         {
           "refId": "B",
           "namespace": "AWS/ApplicationELB",
           "metricName": "TargetResponseTime",
           "statistic": "p99",
-          "dimensions": { "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace" },
-          "region": "us-east-1"
+          "dimensions": {
+            "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         }
       ]
     },
@@ -50,32 +86,73 @@
       "id": 2,
       "type": "timeseries",
       "title": "ALB — HTTPCode_Target_4XX / 5XX, UnHealthyHostCount",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
-      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
           "namespace": "AWS/ApplicationELB",
           "metricName": "HTTPCode_Target_4XX_Count",
           "statistic": "Sum",
-          "dimensions": { "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace" },
-          "region": "us-east-1"
+          "dimensions": {
+            "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         },
         {
           "refId": "B",
           "namespace": "AWS/ApplicationELB",
           "metricName": "HTTPCode_Target_5XX_Count",
           "statistic": "Sum",
-          "dimensions": { "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace" },
-          "region": "us-east-1"
+          "dimensions": {
+            "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         },
         {
           "refId": "C",
           "namespace": "AWS/ApplicationELB",
           "metricName": "UnHealthyHostCount",
           "statistic": "Average",
-          "dimensions": { "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace" },
-          "region": "us-east-1"
+          "dimensions": {
+            "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         }
       ]
     },
@@ -83,32 +160,73 @@
       "id": 3,
       "type": "timeseries",
       "title": "API Gateway — Latencia (avg, p95) y errores 4xx/5xx",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
-      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
           "namespace": "AWS/ApiGateway",
           "metricName": "Latency",
           "statistic": "Average",
-          "dimensions": { "ApiId": "$api_id" },
-          "region": "us-east-1"
+          "dimensions": {
+            "ApiId": "$api_id"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         },
         {
           "refId": "B",
           "namespace": "AWS/ApiGateway",
           "metricName": "4xx",
           "statistic": "Sum",
-          "dimensions": { "ApiId": "$api_id" },
-          "region": "us-east-1"
+          "dimensions": {
+            "ApiId": "$api_id"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         },
         {
           "refId": "C",
           "namespace": "AWS/ApiGateway",
           "metricName": "5xx",
           "statistic": "Sum",
-          "dimensions": { "ApiId": "$api_id" },
-          "region": "us-east-1"
+          "dimensions": {
+            "ApiId": "$api_id"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         }
       ]
     }

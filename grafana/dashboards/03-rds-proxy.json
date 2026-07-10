@@ -9,7 +9,10 @@
         "name": "workspace",
         "type": "custom",
         "query": "dev,qa,prod",
-        "current": { "text": "dev", "value": "dev" }
+        "current": {
+          "text": "dev",
+          "value": "dev"
+        }
       }
     ]
   },
@@ -18,24 +21,54 @@
       "id": 1,
       "type": "timeseries",
       "title": "Conexiones en transacción / en cola",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
-      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
           "namespace": "AWS/RDS",
           "metricName": "DatabaseConnectionsCurrentlyInTransaction",
           "statistic": "Average",
-          "dimensions": { "ProxyName": "e-comerce-golden-bears-proxy-$workspace" },
-          "region": "us-east-1"
+          "dimensions": {
+            "ProxyName": "e-comerce-golden-bears-proxy-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         },
         {
           "refId": "B",
           "namespace": "AWS/RDS",
           "metricName": "ConnectionRequestsQueued",
           "statistic": "Average",
-          "dimensions": { "ProxyName": "e-comerce-golden-bears-proxy-$workspace" },
-          "region": "us-east-1"
+          "dimensions": {
+            "ProxyName": "e-comerce-golden-bears-proxy-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         }
       ]
     },
@@ -43,8 +76,16 @@
       "id": 2,
       "type": "timeseries",
       "title": "Conexiones disponibles",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
-      "datasource": "CloudWatch",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
@@ -55,7 +96,16 @@
             "ProxyName": "e-comerce-golden-bears-proxy-$workspace",
             "TargetGroup": "default"
           },
-          "region": "us-east-1"
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics",
+          "id": "",
+          "matchExact": true,
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         }
       ]
     }
