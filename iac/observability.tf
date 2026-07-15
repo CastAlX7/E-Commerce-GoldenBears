@@ -484,7 +484,8 @@ resource "aws_ecs_task_definition" "grafana" {
       # cloudfront.tf) — sin esto, sus assets (CSS/JS) y links internos se
       # generan apuntando a la raíz del dominio y rompen.
       { name = "GF_SERVER_ROOT_URL", value = "https://${aws_cloudfront_distribution.frontend_cdn.domain_name}/grafana/" },
-      { name = "GF_SERVER_SERVE_FROM_SUB_PATH", value = "true" }
+      { name = "GF_SERVER_SERVE_FROM_SUB_PATH", value = "true" },
+      { name = "GF_SECURITY_CSRF_TRUSTED_ORIGINS", value = "https://${aws_cloudfront_distribution.frontend_cdn.domain_name}" }
     ]
     secrets = [
       {
