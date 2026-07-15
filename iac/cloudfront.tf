@@ -68,13 +68,13 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
   # origen de S3 y devuelven AccessDenied.
   origin {
     domain_name = replace(aws_apigatewayv2_api.main.api_endpoint, "https://", "")
-    origin_id    = "api-gateway"
+    origin_id   = "api-gateway"
 
     custom_origin_config {
       http_port              = 80
-      https_port              = 443
+      https_port             = 443
       origin_protocol_policy = "https-only"
-      origin_ssl_protocols    = ["TLSv1.2"]
+      origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
@@ -98,13 +98,13 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
 
   ordered_cache_behavior {
     path_pattern               = "/api/*"
-    allowed_methods             = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods               = ["GET", "HEAD"]
-    target_origin_id            = "api-gateway"
-    viewer_protocol_policy      = "https-only"
-    cache_policy_id             = data.aws_cloudfront_cache_policy.caching_disabled.id
-    origin_request_policy_id    = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
-    response_headers_policy_id  = aws_cloudfront_response_headers_policy.security_headers.id
+    allowed_methods            = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "api-gateway"
+    viewer_protocol_policy     = "https-only"
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
   }
 
   # Imágenes de producto (backend/app/main.py monta StaticFiles en /static) —
@@ -112,13 +112,28 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
   # una imagen no cambia una vez subida.
   ordered_cache_behavior {
     path_pattern               = "/static/*"
-    allowed_methods             = ["GET", "HEAD"]
-    cached_methods               = ["GET", "HEAD"]
-    target_origin_id            = "api-gateway"
-    viewer_protocol_policy      = "https-only"
-    cache_policy_id             = data.aws_cloudfront_cache_policy.caching_optimized.id
-    origin_request_policy_id    = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
-    response_headers_policy_id  = aws_cloudfront_response_headers_policy.security_headers.id
+    allowed_methods            = ["GET", "HEAD"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "api-gateway"
+    viewer_protocol_policy     = "https-only"
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
+    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
+  }
+
+  # Grafana, reenviado por el mismo origin de API Gateway (ver
+  # aws_lb_listener_rule.grafana en alb.tf, que enruta /grafana/* al target
+  # group de Grafana en el ALB interno). Sin ALB propio ni WAF aparte: hereda
+  # el web_acl_id de esta distribución.
+  ordered_cache_behavior {
+    path_pattern               = "/grafana/*"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "api-gateway"
+    viewer_protocol_policy     = "https-only"
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
   }
 
   restrictions {

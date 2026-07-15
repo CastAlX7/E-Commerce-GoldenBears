@@ -24,6 +24,13 @@ permissions:
   id-token: write
   contents: read
 
+# Evita que 2 corridas del mismo entorno se pisen (ej. un re-run manual
+# mientras la automática por workflow_run sigue corriendo) desplegando 2
+# task definitions distintas a la vez sobre el mismo servicio ECS.
+concurrency:
+  group: ansible-deploy-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
 
   resolve-environment:

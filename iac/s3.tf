@@ -21,11 +21,14 @@ resource "aws_s3_bucket_public_access_block" "logs" {
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
+  # checkov:skip=CKV_AWS_145: ALB access logging no soporta buckets con SSE-KMS
+  # (falla en runtime con "Access Denied... Please check S3 bucket permission",
+  # sin importar qué política KMS se agregue) — mismo motivo por el que
+  # aws_s3_bucket.documental ya usa AES256 en vez de KMS.
   bucket = aws_s3_bucket.logs.id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm     = "aws:kms"
-      kms_master_key_id = aws_kms_key.s3.arn
+      sse_algorithm = "AES256"
     }
     bucket_key_enabled = true
   }
@@ -40,6 +43,22 @@ resource "aws_s3_bucket_lifecycle_configuration" "logs" {
       days = var.log_retention_days
     }
   }
+}
+
+resource "aws_s3_bucket_policy" "alb_logs" {
+  bucket = aws_s3_bucket.logs.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "AllowALBAccessLogs"
+      Effect = "Allow"
+      Principal = {
+        AWS = data.aws_elb_service_account.main.arn
+      }
+      Action   = "s3:PutObject"
+      Resource = "${aws_s3_bucket.logs.arn}/alb/*"
+    }]
+  })
 }
 
 
@@ -121,7 +140,7 @@ resource "aws_s3_bucket_policy" "frontend_oac" {
   })
 }
 
-# --- Bucket Documental (comprobantes SUNAT + access logs ALB) ---
+# --- Bucket Documental (exclusivo para comprobantes electrónicos SUNAT) ---
 
 resource "aws_s3_bucket" "documental" {
   bucket        = "${var.project_name}-documental-${terraform.workspace}"
@@ -190,22 +209,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "documental" {
       days_after_initiation = 7
     }
   }
-}
-
-resource "aws_s3_bucket_policy" "alb_logs" {
-  bucket = aws_s3_bucket.documental.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid    = "AllowALBAccessLogs"
-      Effect = "Allow"
-      Principal = {
-        AWS = data.aws_elb_service_account.main.arn
-      }
-      Action   = "s3:PutObject"
-      Resource = "${aws_s3_bucket.documental.arn}/alb/*"
-    }]
-  })
 }
 
 resource "aws_s3_bucket" "documental_replica" {

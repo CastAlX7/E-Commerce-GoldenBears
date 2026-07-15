@@ -66,6 +66,17 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
   referenced_security_group_id = aws_security_group.ecs.id
 }
 
+# Reenvío de /grafana/* (aws_lb_listener_rule.grafana en alb.tf) hacia el
+# target group de Grafana, que vive en el SG "observability".
+resource "aws_vpc_security_group_egress_rule" "alb_to_observability" {
+  security_group_id            = aws_security_group.alb.id
+  description                  = "Egress a Grafana (observability) en puerto 3000"
+  ip_protocol                  = "tcp"
+  from_port                    = 3000
+  to_port                      = 3000
+  referenced_security_group_id = aws_security_group.observability.id
+}
+
 # --- ECS Fargate Tasks ---
 
 resource "aws_security_group" "ecs" {

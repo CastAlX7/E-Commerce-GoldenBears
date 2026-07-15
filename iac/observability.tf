@@ -64,11 +64,11 @@ resource "aws_security_group" "observability" {
 
 resource "aws_vpc_security_group_ingress_rule" "grafana_web" {
   security_group_id            = aws_security_group.observability.id
-  description                  = "Allow inbound HTTP access to Grafana from its public ALB"
+  description                  = "Allow inbound HTTP access to Grafana from the shared internal ALB (path /grafana/*)"
   ip_protocol                  = "tcp"
   from_port                    = 3000
   to_port                      = 3000
-  referenced_security_group_id = aws_security_group.grafana_alb.id
+  referenced_security_group_id = aws_security_group.alb.id
 }
 
 resource "aws_vpc_security_group_egress_rule" "observability_egress" {
@@ -100,75 +100,27 @@ resource "aws_vpc_security_group_ingress_rule" "observability_efs_nfs" {
   referenced_security_group_id = aws_security_group.observability.id
 }
 
-# --- ALB público para acceder a Grafana desde fuera de la VPC ---
-# No hay dominio propio (se sacó ACM/Route53 del proyecto), así que queda en
-# HTTP plano sobre el DNS que da el propio ALB — Grafana maneja su propia
-# autenticación (admin + password en Secrets Manager) detrás de esto.
-resource "aws_security_group" "grafana_alb" {
-  name        = "${var.project_name}-grafana-alb-sg-${terraform.workspace}"
-  description = "Security group del ALB publico de Grafana"
-  vpc_id      = aws_vpc.main.id
-
-  tags = {
-    Name        = "${var.project_name}-grafana-alb-sg-${terraform.workspace}"
-    Environment = terraform.workspace
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
-  }
-}
-
-resource "aws_vpc_security_group_ingress_rule" "grafana_alb_from_internet" {
-  security_group_id = aws_security_group.grafana_alb.id
-  description       = "Acceso publico a Grafana"
-  ip_protocol       = "tcp"
-  from_port         = 80
-  to_port           = 80
-  cidr_ipv4         = "0.0.0.0/0"
-}
-
-resource "aws_vpc_security_group_egress_rule" "grafana_alb_to_observability" {
-  security_group_id            = aws_security_group.grafana_alb.id
-  description                  = "Egress a Grafana en puerto 3000"
-  ip_protocol                  = "tcp"
-  from_port                    = 3000
-  to_port                      = 3000
-  referenced_security_group_id = aws_security_group.observability.id
-}
-
-resource "aws_lb" "grafana" {
-  # checkov:skip=CKV2_AWS_20: sin dominio/ACM en el proyecto, queda en HTTP plano detrás del propio DNS del ALB; Grafana maneja su propia autenticación.
-  # Nombre corto a propósito: los ALB tienen un límite duro de 32 caracteres
-  # en AWS, y "${var.project_name}-grafana-alb-${workspace}" lo supera.
-  name               = "gb-grafana-alb-${terraform.workspace}"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.grafana_alb.id]
-  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-
-  access_logs {
-    bucket  = aws_s3_bucket.documental.id
-    prefix  = "alb"
-    enabled = true
-  }
-
-  tags = {
-    Name        = "${var.project_name}-grafana-alb-${terraform.workspace}"
-    Environment = terraform.workspace
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
-  }
-}
-
+# --- Acceso a Grafana vía el ALB interno compartido con el backend ---
+# Sin ALB propio: reusa el mismo camino público que ya expone al backend
+# (CloudFront -> API Gateway -> VPC Link -> este listener), enrutado por path
+# ("/grafana/*", ver aws_lb_listener_rule.grafana en alb.tf). Así Grafana
+# hereda el WAF y el TLS de CloudFront gratis, sin quedar con IP/DNS pública
+# propia. La autenticación de Grafana (admin + password en Secrets Manager)
+# sigue siendo la última línea de defensa detrás de todo esto.
 resource "aws_lb_target_group" "grafana" {
-  # Mismo límite de 32 caracteres que aws_lb.grafana.
+  # Nombre corto a propósito: los Target Group tienen un límite duro de 32
+  # caracteres en AWS, y "${var.project_name}-grafana-tg-${workspace}" lo supera.
   name        = "gb-grafana-tg-${terraform.workspace}"
   port        = 3000
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = aws_vpc.main.id
 
+  # Con GF_SERVER_SERVE_FROM_SUB_PATH=true (ver container_definitions abajo),
+  # Grafana registra TODAS sus rutas internas bajo /grafana/, incluida la de
+  # salud — por eso el health check también lleva el prefijo.
   health_check {
-    path                = "/api/health"
+    path                = "/grafana/api/health"
     protocol            = "HTTP"
     matcher             = "200"
     healthy_threshold   = 2
@@ -179,24 +131,6 @@ resource "aws_lb_target_group" "grafana" {
 
   tags = {
     Name        = "${var.project_name}-grafana-tg-${terraform.workspace}"
-    Environment = terraform.workspace
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
-  }
-}
-
-resource "aws_lb_listener" "grafana" {
-  load_balancer_arn = aws_lb.grafana.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.grafana.arn
-  }
-
-  tags = {
-    Name        = "${var.project_name}-grafana-listener-${terraform.workspace}"
     Environment = terraform.workspace
     Project     = var.project_name
     ManagedBy   = "Terraform"
@@ -522,8 +456,8 @@ resource "aws_ecs_task_definition" "grafana" {
   volume {
     name = "grafana-storage"
     efs_volume_configuration {
-      file_system_id          = aws_efs_file_system.observability.id
-      transit_encryption      = "ENABLED"
+      file_system_id     = aws_efs_file_system.observability.id
+      transit_encryption = "ENABLED"
       authorization_config {
         access_point_id = aws_efs_access_point.grafana.id
         iam             = "ENABLED"
@@ -545,7 +479,12 @@ resource "aws_ecs_task_definition" "grafana" {
       containerPath = "/var/lib/grafana"
     }]
     environment = [
-      { name = "GF_SECURITY_ADMIN_USER", value = "admin" }
+      { name = "GF_SECURITY_ADMIN_USER", value = "admin" },
+      # Grafana vive detrás de CloudFront en el path /grafana/* (ver
+      # cloudfront.tf) — sin esto, sus assets (CSS/JS) y links internos se
+      # generan apuntando a la raíz del dominio y rompen.
+      { name = "GF_SERVER_ROOT_URL", value = "https://${aws_cloudfront_distribution.frontend_cdn.domain_name}/grafana/" },
+      { name = "GF_SERVER_SERVE_FROM_SUB_PATH", value = "true" }
     ]
     secrets = [
       {

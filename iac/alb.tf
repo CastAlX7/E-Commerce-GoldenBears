@@ -10,7 +10,7 @@ resource "aws_lb" "ecs_alb" {
   enable_deletion_protection = terraform.workspace == "prod" ? true : false
 
   access_logs {
-    bucket  = aws_s3_bucket.documental.id
+    bucket  = aws_s3_bucket.logs.id
     prefix  = "alb"
     enabled = true
   }
@@ -59,6 +59,32 @@ resource "aws_lb_listener" "main" {
 
   tags = {
     Name        = "${var.project_name}-listener-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Reenvía /grafana/* (llega vía CloudFront -> API Gateway -> este mismo VPC
+# Link/listener) al target group de Grafana en vez del backend. Así Grafana
+# no necesita su propio ALB público.
+resource "aws_lb_listener_rule" "grafana" {
+  listener_arn = aws_lb_listener.main.arn
+  priority     = 10
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.grafana.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/grafana/*"]
+    }
+  }
+
+  tags = {
+    Name        = "${var.project_name}-grafana-rule-${terraform.workspace}"
     Environment = terraform.workspace
     Project     = var.project_name
     ManagedBy   = "Terraform"
