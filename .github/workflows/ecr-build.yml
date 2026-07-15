@@ -1,11 +1,11 @@
-name: Build y Push a ECR + Frontend
+name: Build y Push a ECR y Frontend
 
 # Sigue el patrón de la guía (Sección 5), encadenado con workflow_run tras el
 # apply de Terraform (Sección 6.5) porque el repo ECR y el bucket/distribución
 # del frontend recién existen después de ese apply.
 on:
   workflow_run:
-    workflows: ["Terraform — Plan + Apply"]
+    workflows: ["Terraform Plan y Apply"]
     types: [completed]
     branches: [develop, qa, main]
   workflow_dispatch:

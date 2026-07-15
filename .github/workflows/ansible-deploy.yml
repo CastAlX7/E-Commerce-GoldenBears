@@ -1,4 +1,4 @@
-name: Ansible — Deploy to ECS
+name: Ansible Deploy to ECS
 
 # Sigue el patrón de la guía (Sección 6.5): Ansible corre encadenado por
 # workflow_run después de que la imagen del backend ya está en ECR (si no,
@@ -8,7 +8,7 @@ name: Ansible — Deploy to ECS
 # Ansible arma la Task Definition y llama a la API de ECS directo.
 on:
   workflow_run:
-    workflows: ["Build y Push a ECR + Frontend"]
+    workflows: ["Build y Push a ECR y Frontend"]
     types: [completed]
     branches: [develop, qa, main]
   workflow_dispatch:
