@@ -70,6 +70,7 @@ resource "aws_s3_bucket_policy" "alb_logs" {
 # --- Bucket Frontend (SPA / activos estáticos) ---
 
 resource "aws_s3_bucket" "frontend" {
+  # checkov:skip=CKV_AWS_144: Bucket de artefactos estáticos del SPA; se reconstruye/republica desde CI en minutos, no requiere replicación cross-region.
   # checkov:skip=CKV2_AWS_62: Bucket estático de frontend sin consumidores de eventos S3.
   bucket        = "${var.project_name}-frontend-${terraform.workspace}"
   force_destroy = true
