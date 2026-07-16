@@ -51,7 +51,7 @@ resource "aws_rds_cluster" "aurora" {
   copy_tags_to_snapshot               = true
   # deletion_protection=false en dev/qa para facilitar terraform destroy; en prod debe ser true
   deletion_protection       = var.aurora_deletion_protection
-  skip_final_snapshot       = false
+  skip_final_snapshot       = true
   final_snapshot_identifier = "${var.project_name}-aurora-final-snapshot-${terraform.workspace}"
 
   serverlessv2_scaling_configuration {
