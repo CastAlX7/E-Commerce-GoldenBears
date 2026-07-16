@@ -303,6 +303,7 @@ resource "aws_iam_role_policy" "grafana_efs" {
 
 # Permissions for Grafana to read CloudWatch logs and metrics
 resource "aws_iam_policy" "grafana_cloudwatch_readonly" {
+  # checkov:skip=CKV_AWS_355: Las acciones de lectura de CloudWatch y Logs (GetMetricData, StartQuery, etc.) requieren acceso a nivel de cuenta (*) o no soportan restricciones por recurso.
   name = "${var.project_name}-grafana-cloudwatch-policy-${terraform.workspace}"
 
   policy = jsonencode({

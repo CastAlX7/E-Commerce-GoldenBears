@@ -25,6 +25,7 @@ resource "aws_cloudwatch_log_group" "lambda_billing" {
 }
 
 resource "aws_lambda_function" "lambda_inventario" {
+  # checkov:skip=CKV_AWS_116: Las funciones Lambda de este proyecto no requieren una Dead Letter Queue (DLQ) para el manejo de fallos.
   filename         = "${path.module}/lambda_inventario.zip"
   source_code_hash = filebase64sha256("${path.module}/lambda_inventario.zip")
   function_name    = "${var.project_name}-inventory-${terraform.workspace}"
@@ -81,6 +82,7 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda_inventory" {
 }
 
 resource "aws_lambda_function" "lambda_comprobantes" {
+  # checkov:skip=CKV_AWS_116: Las funciones Lambda de este proyecto no requieren una Dead Letter Queue (DLQ) para el manejo de fallos.
   filename         = "${path.module}/lambda_comprobantes.zip"
   source_code_hash = filebase64sha256("${path.module}/lambda_comprobantes.zip")
   function_name    = "${var.project_name}-billing-${terraform.workspace}"
