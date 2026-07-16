@@ -234,6 +234,31 @@ resource "aws_s3_bucket" "documental_replica" {
   }
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "documental_replica" {
+  provider = aws.replica
+  bucket   = aws_s3_bucket.documental_replica.id
+
+  rule {
+    id     = "facturas-retencion-sunat-replica"
+    status = "Enabled"
+    filter {
+      prefix = "facturas/"
+    }
+    transition {
+      days          = 90
+      storage_class = "GLACIER"
+    }
+  }
+
+  rule {
+    id     = "abort-incomplete-uploads-replica"
+    status = "Enabled"
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
 resource "aws_s3_bucket_versioning" "documental_replica" {
   provider = aws.replica
   bucket   = aws_s3_bucket.documental_replica.id
