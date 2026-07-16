@@ -34,7 +34,7 @@ resource "aws_lambda_function" "lambda_inventario" {
   handler          = "handler.lambda_handler"
   timeout          = 30
 
-  # reserved_concurrent_executions = 10
+  reserved_concurrent_executions = 10
 
   kms_key_arn = aws_kms_key.compute.arn
 
@@ -91,7 +91,7 @@ resource "aws_lambda_function" "lambda_comprobantes" {
   handler          = "handler.lambda_handler"
   timeout          = 60
 
-  # reserved_concurrent_executions = 10
+  reserved_concurrent_executions = 10
 
   kms_key_arn = aws_kms_key.compute.arn
 
