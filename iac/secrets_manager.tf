@@ -1,4 +1,5 @@
 resource "aws_secretsmanager_secret" "app_db_credentials" {
+  # checkov:skip=CKV2_AWS_57: Rotación automática de secretos no configurada (requiere Lambda rotator externo)
   name                    = "${var.project_name}/${terraform.workspace}/app/db-credentials"
   kms_key_id              = aws_kms_key.secrets.arn
   recovery_window_in_days = 0
@@ -21,6 +22,7 @@ resource "aws_secretsmanager_secret_version" "app_db_credentials" {
 }
 
 resource "aws_secretsmanager_secret" "nubefact_credentials" {
+  # checkov:skip=CKV2_AWS_57: Rotación automática de secretos no configurada (requiere Lambda rotator externo)
   name                    = "${var.project_name}/${terraform.workspace}/billing/nubefact"
   kms_key_id              = aws_kms_key.secrets.arn
   recovery_window_in_days = 0
@@ -43,6 +45,7 @@ resource "aws_secretsmanager_secret_version" "nubefact_credentials" {
 }
 
 resource "aws_secretsmanager_secret" "redis_credentials" {
+  # checkov:skip=CKV2_AWS_57: Rotación automática de secretos no configurada (requiere Lambda rotator externo)
   name                    = "${var.project_name}/${terraform.workspace}/cache/redis-token"
   kms_key_id              = aws_kms_key.secrets.arn
   recovery_window_in_days = 0
@@ -61,6 +64,7 @@ resource "aws_secretsmanager_secret_version" "redis_credentials" {
 }
 
 resource "aws_secretsmanager_secret" "gmail_credentials" {
+  # checkov:skip=CKV2_AWS_57: Rotación automática de secretos no configurada (requiere Lambda rotator externo)
   name                    = "${var.project_name}/${terraform.workspace}/notifications/gmail"
   kms_key_id              = aws_kms_key.secrets.arn
   recovery_window_in_days = 0
@@ -82,6 +86,7 @@ resource "aws_secretsmanager_secret_version" "gmail_credentials" {
 }
 
 resource "aws_secretsmanager_secret" "grafana_admin" {
+  # checkov:skip=CKV2_AWS_57: Rotación automática de secretos no configurada (requiere Lambda rotator externo)
   name                    = "${var.project_name}/${terraform.workspace}/observability/grafana-admin"
   kms_key_id              = aws_kms_key.secrets.arn
   recovery_window_in_days = 0

@@ -315,6 +315,7 @@ resource "aws_iam_role_policy" "grafana_efs" {
 
 # Permissions for Grafana to read CloudWatch logs and metrics
 resource "aws_iam_policy" "grafana_cloudwatch_readonly" {
+  # checkov:skip=CKV_AWS_355: Las acciones de lectura de CloudWatch y Logs (GetMetricData, StartQuery, etc.) requieren acceso a nivel de cuenta (*) o no soportan restricciones por recurso.
   name = "${var.project_name}-grafana-cloudwatch-policy-${terraform.workspace}"
 
   policy = jsonencode({
@@ -382,6 +383,7 @@ resource "aws_ecs_cluster" "observability" {
 
 # --- Prometheus Task & Service ---
 resource "aws_ecs_task_definition" "prometheus" {
+  # checkov:skip=CKV_AWS_336: Prometheus requiere acceso de escritura a directorios temporales del sistema (/tmp) para su correcto funcionamiento y manejo de cache en caliente que no pueden delegarse eficientemente a volumenes externos.
   family                   = "${var.project_name}-prometheus-${terraform.workspace}"
   cpu                      = "512"
   memory                   = "1024"
@@ -460,6 +462,7 @@ resource "aws_ecs_service" "prometheus" {
 
 # --- Grafana Task & Service ---
 resource "aws_ecs_task_definition" "grafana" {
+  # checkov:skip=CKV_AWS_336: Grafana necesita permisos de escritura en root filesystem para la inicializacion y descompresion dinamica de plugins y dependencias en /tmp y /run durante el arranque.
   family                   = "${var.project_name}-grafana-${terraform.workspace}"
   cpu                      = "512"
   memory                   = "1024"

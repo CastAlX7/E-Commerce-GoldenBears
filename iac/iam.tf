@@ -234,6 +234,8 @@ resource "aws_iam_role" "lambda_inventario" {
 }
 
 resource "aws_iam_role_policy" "lambda_inventario" {
+  # checkov:skip=CKV_AWS_290: Se requiere acceso de escritura a nivel de cuenta (*) para gestionar interfaces de red (ENI) al estar en una VPC.
+  # checkov:skip=CKV_AWS_355: Las acciones sobre interfaces de red (ec2:*NetworkInterface) no soportan restricciones a nivel de recurso.
   name = "${var.project_name}-lambda-inventory-policy-${terraform.workspace}"
   role = aws_iam_role.lambda_inventario.id
 
@@ -324,6 +326,8 @@ resource "aws_iam_role" "lambda_comprobantes" {
 }
 
 resource "aws_iam_role_policy" "lambda_comprobantes" {
+  # checkov:skip=CKV_AWS_290: Se requiere acceso de escritura a nivel de cuenta (*) para gestionar interfaces de red (ENI) al estar en una VPC.
+  # checkov:skip=CKV_AWS_355: Las acciones sobre interfaces de red (ec2:*NetworkInterface) no soportan restricciones a nivel de recurso.
   name = "${var.project_name}-lambda-billing-policy-${terraform.workspace}"
   role = aws_iam_role.lambda_comprobantes.id
 
