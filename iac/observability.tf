@@ -314,9 +314,12 @@ resource "aws_iam_policy" "grafana_cloudwatch_readonly" {
           "cloudwatch:GetMetricData",
           "cloudwatch:ListMetrics",
           "cloudwatch:GetMetricStatistics",
+          "logs:DescribeLogGroups",
           "logs:GetLogGroupFields",
           "logs:StartQuery",
+          "logs:StopQuery",
           "logs:GetQueryResults",
+          "logs:GetLogEvents",
           "ec2:DescribeTags"
         ]
         Resource = "*"
