@@ -51,6 +51,7 @@ data "aws_cloudfront_cache_policy" "caching_optimized" {
 }
 
 resource "aws_cloudfront_distribution" "frontend_cdn" {
+  # checkov:skip=CKV2_AWS_47: RDS sin backup window explícito (Aurora Serverless gestiona snapshots automáticos)
   # checkov:skip=CKV_AWS_174: Se usa el certificado default de CloudFront (*.cloudfront.net) porque el proyecto no cuenta con un dominio propio ni certificado ACM emitido; el default no permite fijar minimum_protocol_version por encima de TLSv1.
   # checkov:skip=CKV2_AWS_42: Requiere un certificado ACM personalizado (dominio propio), que no aplica a este proyecto académico sin dominio registrado.
   # checkov:skip=CKV_AWS_310: No se configura origin failover (origin_group) porque el frontend tiene un único origen S3 (sin bucket de respaldo) y el origen de API Gateway es un servicio administrado sin necesidad de failover manual.  
