@@ -140,7 +140,7 @@ resource "aws_vpc_security_group_egress_rule" "ecs_to_vpc_endpoints" {
 # --- RDS Proxy ---
 
 resource "aws_security_group" "rds_proxy" {
-   # checkov:skip=CKV2_AWS_5:Security groups no adjuntos directamente a recursos (uso vía referencias cruzadas)
+  # checkov:skip=CKV2_AWS_5:Security groups no adjuntos directamente a recursos (uso vía referencias cruzadas)
   name        = "${var.project_name}-rds-proxy-sg-${terraform.workspace}"
   description = "Security group del RDS Proxy"
   vpc_id      = aws_vpc.main.id
