@@ -26,6 +26,7 @@ resource "aws_cloudwatch_log_group" "lambda_billing" {
 
 resource "aws_lambda_function" "lambda_inventario" {
   # checkov:skip=CKV_AWS_116: Las funciones Lambda de este proyecto no requieren una Dead Letter Queue (DLQ) para el manejo de fallos.
+  # checkov:skip=CKV_AWS_115: El entorno Sandbox de AWS tiene un limite de concurrencia de 10, lo que impide reservar concurrencia sin violar el minimo de 10 ejecuciones no reservadas de la cuenta.
   filename         = "${path.module}/lambda_inventario.zip"
   source_code_hash = filebase64sha256("${path.module}/lambda_inventario.zip")
   function_name    = "${var.project_name}-inventory-${terraform.workspace}"
@@ -34,7 +35,7 @@ resource "aws_lambda_function" "lambda_inventario" {
   handler          = "handler.lambda_handler"
   timeout          = 30
 
-  reserved_concurrent_executions = 10
+  # reserved_concurrent_executions = 10
 
   kms_key_arn = aws_kms_key.compute.arn
 
@@ -83,6 +84,7 @@ resource "aws_lambda_event_source_mapping" "sqs_to_lambda_inventory" {
 
 resource "aws_lambda_function" "lambda_comprobantes" {
   # checkov:skip=CKV_AWS_116: Las funciones Lambda de este proyecto no requieren una Dead Letter Queue (DLQ) para el manejo de fallos.
+  # checkov:skip=CKV_AWS_115: El entorno Sandbox de AWS tiene un limite de concurrencia de 10, lo que impide reservar concurrencia sin violar el minimo de 10 ejecuciones no reservadas de la cuenta.
   filename         = "${path.module}/lambda_comprobantes.zip"
   source_code_hash = filebase64sha256("${path.module}/lambda_comprobantes.zip")
   function_name    = "${var.project_name}-billing-${terraform.workspace}"
@@ -91,7 +93,7 @@ resource "aws_lambda_function" "lambda_comprobantes" {
   handler          = "handler.lambda_handler"
   timeout          = 60
 
-  reserved_concurrent_executions = 10
+  # reserved_concurrent_executions = 10
 
   kms_key_arn = aws_kms_key.compute.arn
 

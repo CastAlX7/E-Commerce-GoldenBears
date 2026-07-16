@@ -1,6 +1,7 @@
 resource "aws_ecr_repository" "backend" {
   name                 = "${var.project_name}-backend-${terraform.workspace}"
   image_tag_mutability = "IMMUTABLE"
+  force_delete         = true
 
   encryption_configuration {
     encryption_type = "KMS"
@@ -21,6 +22,7 @@ resource "aws_ecr_repository" "backend" {
 resource "aws_ecr_repository" "prometheus" {
   name                 = "${var.project_name}-prometheus-${terraform.workspace}"
   image_tag_mutability = "IMMUTABLE"
+  force_delete         = true
 
   encryption_configuration {
     encryption_type = "KMS"
@@ -44,6 +46,7 @@ resource "aws_ecr_repository" "prometheus" {
 resource "aws_ecr_repository" "grafana" {
   name                 = "${var.project_name}-grafana-${terraform.workspace}"
   image_tag_mutability = "IMMUTABLE"
+  force_delete         = true
 
   encryption_configuration {
     encryption_type = "KMS"
