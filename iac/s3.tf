@@ -1,5 +1,6 @@
 resource "aws_s3_bucket" "logs" {
-  # checkov:skip=CKV_AWS_144: S3 logs bucket does not need cross-region replication.
+  # checkov:skip=CKV_AWS_144: El bucket de logs S3 no requiere de replicación cross-region.
+  # checkov:skip=CKV2_AWS_62: Este bucket no requiere notificaciones de eventos (SNS/SQS/Lambda); no existe flujo event-driven asociado.
   # El nombre del bucket de logs de WAFv2 DEBE empezar con "aws-waf-logs-" por restriccion del API de AWS, de lo contrario fallara al configurar el logging.
   bucket        = "aws-waf-logs-${var.project_name}-${terraform.workspace}"
   force_destroy = true
@@ -68,6 +69,7 @@ resource "aws_s3_bucket_policy" "alb_logs" {
 # --- Bucket Frontend (SPA / activos estáticos) ---
 
 resource "aws_s3_bucket" "frontend" {
+  # checkov:skip=CKV2_AWS_62: Bucket estático de frontend sin consumidores de eventos S3.
   bucket        = "${var.project_name}-frontend-${terraform.workspace}"
   force_destroy = true
 
@@ -146,6 +148,7 @@ resource "aws_s3_bucket_policy" "frontend_oac" {
 # --- Bucket Documental (exclusivo para comprobantes electrónicos SUNAT) ---
 
 resource "aws_s3_bucket" "documental" {
+  # checkov:skip=CKV2_AWS_62: Bucket documental sin integración event-driven; el procesamiento no depende de eventos S3.
   bucket        = "${var.project_name}-documental-${terraform.workspace}"
   force_destroy = true
 
@@ -215,6 +218,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "documental" {
 }
 
 resource "aws_s3_bucket" "documental_replica" {
+  # checkov:skip=CKV2_AWS_62: Bucket réplica de contingencia, sin notificaciones requeridas.
   provider      = aws.replica
   bucket        = "${var.project_name}-documental-replica-${terraform.workspace}"
   force_destroy = true
