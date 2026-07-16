@@ -1,5 +1,6 @@
 resource "aws_lb" "ecs_alb" {
   # checkov:skip=CKV2_AWS_20: ALB interno accedido via VPC Link desde API Gateway. El backend FastAPI (uvicorn) escucha en el puerto 8000 por convencion WSGI/ASGI en contenedores Linux — usar puerto 80 requeriria privilegios root (CAP_NET_BIND_SERVICE), lo cual viola el principio de minimo privilegio y generaria fallos en CKV_ECS_16.
+  # checkov:skip=CKV_AWS_150: La proteccion contra borrado solo se activa en produccion para facilitar la creacion/destruccion dinamica de infraestructura en ambientes de desarrollo.
 
   name                       = "${var.project_name}-alb-${terraform.workspace}"
   internal                   = true
