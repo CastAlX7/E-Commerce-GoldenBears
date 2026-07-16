@@ -89,6 +89,18 @@ resource "aws_vpc_security_group_ingress_rule" "ecs_from_observability" {
   referenced_security_group_id = aws_security_group.observability.id
 }
 
+# Grafana -> Prometheus, self-referencing (ambas tareas comparten este SG) —
+# sin esto el datasource de Prometheus en Grafana no puede conectar al 9090,
+# sin importar qué IP le toque a la tarea de Prometheus en cada reinicio.
+resource "aws_vpc_security_group_ingress_rule" "observability_prometheus" {
+  security_group_id            = aws_security_group.observability.id
+  description                  = "Ingress desde Grafana (observability) en puerto 9090 hacia Prometheus"
+  ip_protocol                  = "tcp"
+  from_port                    = 9090
+  to_port                      = 9090
+  referenced_security_group_id = aws_security_group.observability.id
+}
+
 # Montaje de EFS (Grafana) — self-referencing, sin esto el mount de EFS se
 # cuelga al iniciar la tarea de Grafana.
 resource "aws_vpc_security_group_ingress_rule" "observability_efs_nfs" {
