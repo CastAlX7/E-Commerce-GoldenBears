@@ -1,0 +1,352 @@
+{
+  "title": "Infraestructura AWS",
+  "uid": "gb-infraestructura",
+  "schemaVersion": 39,
+  "editable": true,
+  "templating": {
+    "list": [
+      {
+        "name": "workspace",
+        "type": "custom",
+        "query": "dev,qa,prod",
+        "current": {
+          "text": "dev",
+          "value": "dev"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Hosts Sanos vs No Sanos (ALB)",
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
+      "targets": [
+        {
+          "refId": "healthy",
+          "namespace": "AWS/ApplicationELB",
+          "metricName": "HealthyHostCount",
+          "statistic": "Average",
+          "dimensions": {
+            "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        },
+        {
+          "refId": "unhealthy",
+          "namespace": "AWS/ApplicationELB",
+          "metricName": "UnHealthyHostCount",
+          "statistic": "Average",
+          "dimensions": {
+            "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "gauge",
+      "title": "ECS Tasks Activadas",
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "ECS/ContainerInsights",
+          "metricName": "RunningTaskCount",
+          "statistic": "Average",
+          "dimensions": {
+            "ClusterName": "e-comerce-golden-bears-ecs-cluster-$workspace",
+            "ServiceName": "e-comerce-golden-bears-svc-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "CPU / Memory Utilization ECS (%)",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
+      "targets": [
+        {
+          "refId": "cpu",
+          "namespace": "ECS/ContainerInsights",
+          "metricName": "CpuUtilized",
+          "statistic": "Average",
+          "dimensions": {
+            "ClusterName": "e-comerce-golden-bears-ecs-cluster-$workspace",
+            "ServiceName": "e-comerce-golden-bears-svc-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        },
+        {
+          "refId": "memory",
+          "namespace": "ECS/ContainerInsights",
+          "metricName": "MemoryUtilized",
+          "statistic": "Average",
+          "dimensions": {
+            "ClusterName": "e-comerce-golden-bears-ecs-cluster-$workspace",
+            "ServiceName": "e-comerce-golden-bears-svc-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Latencia del Target ALB (p50 / p95 / p99)",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
+      "targets": [
+        {
+          "refId": "p50",
+          "namespace": "AWS/ApplicationELB",
+          "metricName": "TargetResponseTime",
+          "statistic": "Average",
+          "dimensions": {
+            "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        },
+        {
+          "refId": "p99",
+          "namespace": "AWS/ApplicationELB",
+          "metricName": "TargetResponseTime",
+          "statistic": "p99",
+          "dimensions": {
+            "TargetGroup": "targetgroup/e-comerce-golden-bears-tg-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Aurora Serverless ACUs & CPU",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
+      "targets": [
+        {
+          "refId": "acu",
+          "namespace": "AWS/RDS",
+          "metricName": "ServerlessDatabaseCapacity",
+          "statistic": "Average",
+          "dimensions": {
+            "DBClusterIdentifier": "e-comerce-golden-bears-db-cluster-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        },
+        {
+          "refId": "cpu",
+          "namespace": "AWS/RDS",
+          "metricName": "CPUUtilization",
+          "statistic": "Average",
+          "dimensions": {
+            "DBClusterIdentifier": "e-comerce-golden-bears-db-cluster-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "gauge",
+      "title": "ElastiCache Redis Cache Hit Rate (%)",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
+      "targets": [
+        {
+          "refId": "hits",
+          "namespace": "AWS/ElastiCache",
+          "metricName": "CacheHits",
+          "statistic": "Sum",
+          "dimensions": {
+            "ReplicationGroupId": "e-comerce-golden-bears-redis-$workspace"
+          },
+          "region": "us-east-1",
+          "id": "hits",
+          "hidden": true,
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        },
+        {
+          "refId": "misses",
+          "namespace": "AWS/ElastiCache",
+          "metricName": "CacheMisses",
+          "statistic": "Sum",
+          "dimensions": {
+            "ReplicationGroupId": "e-comerce-golden-bears-redis-$workspace"
+          },
+          "region": "us-east-1",
+          "id": "misses",
+          "hidden": true,
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        },
+        {
+          "refId": "hit_rate",
+          "expression": "hits / (hits + misses) * 100",
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "SQS — Mensajes en Cola (Visibles / Invisibles)",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "golden-bears-cloudwatch"
+      },
+      "targets": [
+        {
+          "refId": "visible",
+          "namespace": "AWS/SQS",
+          "metricName": "ApproximateNumberOfMessagesVisible",
+          "statistic": "Sum",
+          "dimensions": {
+            "QueueName": "e-comerce-golden-bears-orders-queue-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        },
+        {
+          "refId": "invisible",
+          "namespace": "AWS/SQS",
+          "metricName": "ApproximateNumberOfMessagesNotVisible",
+          "statistic": "Sum",
+          "dimensions": {
+            "QueueName": "e-comerce-golden-bears-orders-queue-$workspace"
+          },
+          "region": "us-east-1",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "golden-bears-cloudwatch"
+          },
+          "queryMode": "Metrics"
+        }
+      ]
+    }
+  ]
+}

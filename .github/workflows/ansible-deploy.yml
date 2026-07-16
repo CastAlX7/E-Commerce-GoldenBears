@@ -1,4 +1,4 @@
-name: Ansible — Deploy to ECS
+name: Ansible Deploy to ECS
 
 # Sigue el patrón de la guía (Sección 6.5): Ansible corre encadenado por
 # workflow_run después de que la imagen del backend ya está en ECR (si no,
@@ -8,10 +8,14 @@ name: Ansible — Deploy to ECS
 # Ansible arma la Task Definition y llama a la API de ECS directo.
 on:
   workflow_run:
-    workflows: ["Build y Push a ECR + Frontend"]
+    workflows: ["Build y Push a ECR y Frontend"]
     types: [completed]
     branches: [develop, qa, main]
   workflow_dispatch:
+    inputs:
+      run_id:
+        description: "ID del run de 'Build y Push a ECR + Frontend' del que descargar tf-outputs (número al final de su URL en Actions)"
+        required: true
 
 env:
   AWS_REGION: us-east-1
@@ -19,6 +23,13 @@ env:
 permissions:
   id-token: write
   contents: read
+
+# Evita que 2 corridas del mismo entorno se pisen (ej. un re-run manual
+# mientras la automática por workflow_run sigue corriendo) desplegando 2
+# task definitions distintas a la vez sobre el mismo servicio ECS.
+concurrency:
+  group: ansible-deploy-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
 
@@ -70,7 +81,7 @@ jobs:
         with:
           name: tf-outputs
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id || github.run_id }}
+          run-id: ${{ github.event.workflow_run.id || inputs.run_id }}
 
       - name: Configurar credenciales de AWS
         uses: aws-actions/configure-aws-credentials@v4

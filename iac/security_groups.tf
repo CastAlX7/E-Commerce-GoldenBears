@@ -66,6 +66,17 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
   referenced_security_group_id = aws_security_group.ecs.id
 }
 
+# Reenvío de /grafana/* (aws_lb_listener_rule.grafana en alb.tf) hacia el
+# target group de Grafana, que vive en el SG "observability".
+resource "aws_vpc_security_group_egress_rule" "alb_to_observability" {
+  security_group_id            = aws_security_group.alb.id
+  description                  = "Egress a Grafana (observability) en puerto 3000"
+  ip_protocol                  = "tcp"
+  from_port                    = 3000
+  to_port                      = 3000
+  referenced_security_group_id = aws_security_group.observability.id
+}
+
 # --- ECS Fargate Tasks ---
 
 resource "aws_security_group" "ecs" {
@@ -129,6 +140,7 @@ resource "aws_vpc_security_group_egress_rule" "ecs_to_vpc_endpoints" {
 # --- RDS Proxy ---
 
 resource "aws_security_group" "rds_proxy" {
+  # checkov:skip=CKV2_AWS_5:Security groups no adjuntos directamente a recursos (uso vía referencias cruzadas)
   name        = "${var.project_name}-rds-proxy-sg-${terraform.workspace}"
   description = "Security group del RDS Proxy"
   vpc_id      = aws_vpc.main.id
@@ -348,4 +360,13 @@ resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_from_lambda_compro
   from_port                    = 443
   to_port                      = 443
   referenced_security_group_id = aws_security_group.lambda_comprobantes.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_from_observability" {
+  security_group_id            = aws_security_group.vpc_endpoints.id
+  description                  = "Ingress desde Grafana (observability) para leer su secret de admin (HTTPS)"
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
+  referenced_security_group_id = aws_security_group.observability.id
 }
