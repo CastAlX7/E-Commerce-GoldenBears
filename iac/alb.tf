@@ -48,6 +48,8 @@ resource "aws_lb_target_group" "main" {
 }
 
 resource "aws_lb_listener" "main" {
+  # checkov:skip=CKV_AWS_2: Este listener es interno/VPC Link y el tráfico HTTPS se termina en API Gateway/CloudFront.
+  # checkov:skip=CKV_AWS_103: Al usar HTTP para tráfico interno/VPC Link, no se configura SSL/TLS en esta capa.
   load_balancer_arn = aws_lb.ecs_alb.arn
   port              = 8000
   protocol          = "HTTP"
