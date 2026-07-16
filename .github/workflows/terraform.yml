@@ -180,6 +180,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: SonarQube Scan
+        if: github.base_ref == 'develop' || github.ref_name == 'develop'
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
