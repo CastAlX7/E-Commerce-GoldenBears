@@ -35,6 +35,8 @@ def lambda_handler(event, context):
     """
     logger.info(f"Evento SQS de Inventario recibido: {json.dumps(event)}")
 
+    batch_item_failures = []
+
     conn = _get_connection()
     try:
         with conn.cursor() as cur:
@@ -55,11 +57,12 @@ def lambda_handler(event, context):
                         logger.info(f"Deducidas {quantity} unidades del producto ID: {product_id}")
                 except Exception as e:
                     logger.error(f"Error procesando registro de inventario: {str(e)}")
+                    # Reportamos el mensaje como fallido en vez de tragarnos el
+                    # error: así SQS lo reintenta y, si sigue fallando, cae al
+                    # DLQ en vez de darse por procesado sin haberlo estado.
+                    batch_item_failures.append({"itemIdentifier": record["messageId"]})
         conn.commit()
     finally:
         conn.close()
 
-    return {
-        'statusCode': 200,
-        'body': json.dumps('Inventario procesado con éxito')
-    }
+    return {"batchItemFailures": batch_item_failures}

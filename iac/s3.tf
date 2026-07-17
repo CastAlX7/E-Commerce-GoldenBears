@@ -1,6 +1,8 @@
 resource "aws_s3_bucket" "logs" {
-  # checkov:skip=CKV_AWS_144: S3 logs bucket does not need cross-region replication.
+  # checkov:skip=CKV_AWS_144: El bucket de logs S3 no requiere de replicación cross-region.
+  # checkov:skip=CKV2_AWS_62: Este bucket no requiere notificaciones de eventos (SNS/SQS/Lambda); no existe flujo event-driven asociado.
   # El nombre del bucket de logs de WAFv2 DEBE empezar con "aws-waf-logs-" por restriccion del API de AWS, de lo contrario fallara al configurar el logging.
+  # checkov:skip=CKV_AWS_21: Bucket de logs con política operativa sin versionado.
   bucket        = "aws-waf-logs-${var.project_name}-${terraform.workspace}"
   force_destroy = true
 
@@ -12,6 +14,20 @@ resource "aws_s3_bucket" "logs" {
   }
 }
 
+resource "aws_s3_bucket_ownership_controls" "logs" {
+  bucket = aws_s3_bucket.logs.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_acl" "logs" {
+  depends_on = [aws_s3_bucket_ownership_controls.logs]
+
+  bucket = aws_s3_bucket.logs.id
+  acl    = "private"
+}
+
 resource "aws_s3_bucket_public_access_block" "logs" {
   bucket                  = aws_s3_bucket.logs.id
   block_public_acls       = true
@@ -21,11 +37,14 @@ resource "aws_s3_bucket_public_access_block" "logs" {
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
+  # checkov:skip=CKV_AWS_145: ALB access logging no soporta buckets con SSE-KMS
+  # (falla en runtime con "Access Denied... Please check S3 bucket permission",
+  # sin importar qué política KMS se agregue) — mismo motivo por el que
+  # aws_s3_bucket.documental ya usa AES256 en vez de KMS.
   bucket = aws_s3_bucket.logs.id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm     = "aws:kms"
-      kms_master_key_id = aws_kms_key.s3.arn
+      sse_algorithm = "AES256"
     }
     bucket_key_enabled = true
   }
@@ -39,13 +58,34 @@ resource "aws_s3_bucket_lifecycle_configuration" "logs" {
     expiration {
       days = var.log_retention_days
     }
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
   }
+}
+
+resource "aws_s3_bucket_policy" "alb_logs" {
+  bucket = aws_s3_bucket.logs.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "AllowALBAccessLogs"
+      Effect = "Allow"
+      Principal = {
+        AWS = data.aws_elb_service_account.main.arn
+      }
+      Action   = "s3:PutObject"
+      Resource = "${aws_s3_bucket.logs.arn}/alb/*"
+    }]
+  })
 }
 
 
 # --- Bucket Frontend (SPA / activos estáticos) ---
 
 resource "aws_s3_bucket" "frontend" {
+  # checkov:skip=CKV_AWS_144: Bucket de artefactos estáticos del SPA; se reconstruye/republica desde CI en minutos, no requiere replicación cross-region.
+  # checkov:skip=CKV2_AWS_62: Bucket estático de frontend sin consumidores de eventos S3.
   bucket        = "${var.project_name}-frontend-${terraform.workspace}"
   force_destroy = true
 
@@ -121,9 +161,10 @@ resource "aws_s3_bucket_policy" "frontend_oac" {
   })
 }
 
-# --- Bucket Documental (comprobantes SUNAT + access logs ALB) ---
+# --- Bucket Documental (exclusivo para comprobantes electrónicos SUNAT) ---
 
 resource "aws_s3_bucket" "documental" {
+  # checkov:skip=CKV2_AWS_62: Bucket documental sin integración event-driven; el procesamiento no depende de eventos S3.
   bucket        = "${var.project_name}-documental-${terraform.workspace}"
   force_destroy = true
 
@@ -192,23 +233,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "documental" {
   }
 }
 
-resource "aws_s3_bucket_policy" "alb_logs" {
-  bucket = aws_s3_bucket.documental.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid    = "AllowALBAccessLogs"
-      Effect = "Allow"
-      Principal = {
-        AWS = data.aws_elb_service_account.main.arn
-      }
-      Action   = "s3:PutObject"
-      Resource = "${aws_s3_bucket.documental.arn}/alb/*"
-    }]
-  })
-}
-
 resource "aws_s3_bucket" "documental_replica" {
+  # checkov:skip=CKV2_AWS_62: Bucket réplica de contingencia, sin notificaciones requeridas.
   provider      = aws.replica
   bucket        = "${var.project_name}-documental-replica-${terraform.workspace}"
   force_destroy = true
@@ -219,6 +245,31 @@ resource "aws_s3_bucket" "documental_replica" {
     Project     = var.project_name
     ManagedBy   = "Terraform"
     Compliance  = "SUNAT-Replica"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "documental_replica" {
+  provider = aws.replica
+  bucket   = aws_s3_bucket.documental_replica.id
+
+  rule {
+    id     = "facturas-retencion-sunat-replica"
+    status = "Enabled"
+    filter {
+      prefix = "facturas/"
+    }
+    transition {
+      days          = 90
+      storage_class = "GLACIER"
+    }
+  }
+
+  rule {
+    id     = "abort-incomplete-uploads-replica"
+    status = "Enabled"
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
   }
 }
 

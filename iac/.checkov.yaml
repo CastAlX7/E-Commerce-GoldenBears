@@ -1,4 +1,4 @@
 skip-check:
   - CKV2_AWS_5   # Security groups no adjuntos directamente a recursos (uso vía referencias cruzadas)
   - CKV2_AWS_47  # RDS sin backup window explícito (Aurora Serverless gestiona snapshots automáticos)
-  - CKV2_AWS_57  # Rotación automática de secretos no configurada (requiere Lambda rotator externo)
+  - CKV2_AWS_57  # Rotación automática de secretos no configurada (requiere Lambda rotator externo)  

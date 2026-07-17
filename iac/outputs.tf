@@ -98,8 +98,8 @@ output "ecs_memory" {
 }
 
 output "grafana_url" {
-  description = "URL pública de Grafana (HTTP, sin dominio propio)"
-  value       = "http://${aws_lb.grafana.dns_name}"
+  description = "URL pública de Grafana (vía CloudFront, sin ALB/dominio propio)"
+  value       = "https://${aws_cloudfront_distribution.frontend_cdn.domain_name}/grafana/"
 }
 
 output "ecr_prometheus_repository_url" {

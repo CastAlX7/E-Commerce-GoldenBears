@@ -64,11 +64,11 @@ resource "aws_security_group" "observability" {
 
 resource "aws_vpc_security_group_ingress_rule" "grafana_web" {
   security_group_id            = aws_security_group.observability.id
-  description                  = "Allow inbound HTTP access to Grafana from its ALB público"
+  description                  = "Allow inbound HTTP access to Grafana from the shared internal ALB (path /grafana/*)"
   ip_protocol                  = "tcp"
   from_port                    = 3000
   to_port                      = 3000
-  referenced_security_group_id = aws_security_group.grafana_alb.id
+  referenced_security_group_id = aws_security_group.alb.id
 }
 
 resource "aws_vpc_security_group_egress_rule" "observability_egress" {
@@ -89,6 +89,18 @@ resource "aws_vpc_security_group_ingress_rule" "ecs_from_observability" {
   referenced_security_group_id = aws_security_group.observability.id
 }
 
+# Grafana -> Prometheus, self-referencing (ambas tareas comparten este SG) —
+# sin esto el datasource de Prometheus en Grafana no puede conectar al 9090,
+# sin importar qué IP le toque a la tarea de Prometheus en cada reinicio.
+resource "aws_vpc_security_group_ingress_rule" "observability_prometheus" {
+  security_group_id            = aws_security_group.observability.id
+  description                  = "Ingress desde Grafana (observability) en puerto 9090 hacia Prometheus"
+  ip_protocol                  = "tcp"
+  from_port                    = 9090
+  to_port                      = 9090
+  referenced_security_group_id = aws_security_group.observability.id
+}
+
 # Montaje de EFS (Grafana) — self-referencing, sin esto el mount de EFS se
 # cuelga al iniciar la tarea de Grafana.
 resource "aws_vpc_security_group_ingress_rule" "observability_efs_nfs" {
@@ -100,75 +112,27 @@ resource "aws_vpc_security_group_ingress_rule" "observability_efs_nfs" {
   referenced_security_group_id = aws_security_group.observability.id
 }
 
-# --- ALB público para acceder a Grafana desde fuera de la VPC ---
-# No hay dominio propio (se sacó ACM/Route53 del proyecto), así que queda en
-# HTTP plano sobre el DNS que da el propio ALB — Grafana maneja su propia
-# autenticación (admin + password en Secrets Manager) detrás de esto.
-resource "aws_security_group" "grafana_alb" {
-  name        = "${var.project_name}-grafana-alb-sg-${terraform.workspace}"
-  description = "Security group del ALB público de Grafana"
-  vpc_id      = aws_vpc.main.id
-
-  tags = {
-    Name        = "${var.project_name}-grafana-alb-sg-${terraform.workspace}"
-    Environment = terraform.workspace
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
-  }
-}
-
-resource "aws_vpc_security_group_ingress_rule" "grafana_alb_from_internet" {
-  security_group_id = aws_security_group.grafana_alb.id
-  description       = "Acceso público a Grafana"
-  ip_protocol       = "tcp"
-  from_port         = 80
-  to_port           = 80
-  cidr_ipv4         = "0.0.0.0/0"
-}
-
-resource "aws_vpc_security_group_egress_rule" "grafana_alb_to_observability" {
-  security_group_id            = aws_security_group.grafana_alb.id
-  description                  = "Egress a Grafana en puerto 3000"
-  ip_protocol                  = "tcp"
-  from_port                    = 3000
-  to_port                      = 3000
-  referenced_security_group_id = aws_security_group.observability.id
-}
-
-resource "aws_lb" "grafana" {
-  # checkov:skip=CKV2_AWS_20: sin dominio/ACM en el proyecto, queda en HTTP plano detrás del propio DNS del ALB; Grafana maneja su propia autenticación.
-  # Nombre corto a propósito: los ALB tienen un límite duro de 32 caracteres
-  # en AWS, y "${var.project_name}-grafana-alb-${workspace}" lo supera.
-  name               = "gb-grafana-alb-${terraform.workspace}"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.grafana_alb.id]
-  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-
-  access_logs {
-    bucket  = aws_s3_bucket.documental.id
-    prefix  = "alb"
-    enabled = true
-  }
-
-  tags = {
-    Name        = "${var.project_name}-grafana-alb-${terraform.workspace}"
-    Environment = terraform.workspace
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
-  }
-}
-
+# --- Acceso a Grafana vía el ALB interno compartido con el backend ---
+# Sin ALB propio: reusa el mismo camino público que ya expone al backend
+# (CloudFront -> API Gateway -> VPC Link -> este listener), enrutado por path
+# ("/grafana/*", ver aws_lb_listener_rule.grafana en alb.tf). Así Grafana
+# hereda el WAF y el TLS de CloudFront gratis, sin quedar con IP/DNS pública
+# propia. La autenticación de Grafana (admin + password en Secrets Manager)
+# sigue siendo la última línea de defensa detrás de todo esto.
 resource "aws_lb_target_group" "grafana" {
-  # Mismo límite de 32 caracteres que aws_lb.grafana.
+  # Nombre corto a propósito: los Target Group tienen un límite duro de 32
+  # caracteres en AWS, y "${var.project_name}-grafana-tg-${workspace}" lo supera.
   name        = "gb-grafana-tg-${terraform.workspace}"
   port        = 3000
   protocol    = "HTTP"
   target_type = "ip"
   vpc_id      = aws_vpc.main.id
 
+  # Con GF_SERVER_SERVE_FROM_SUB_PATH=true (ver container_definitions abajo),
+  # Grafana registra TODAS sus rutas internas bajo /grafana/, incluida la de
+  # salud — por eso el health check también lleva el prefijo.
   health_check {
-    path                = "/api/health"
+    path                = "/grafana/api/health"
     protocol            = "HTTP"
     matcher             = "200"
     healthy_threshold   = 2
@@ -179,24 +143,6 @@ resource "aws_lb_target_group" "grafana" {
 
   tags = {
     Name        = "${var.project_name}-grafana-tg-${terraform.workspace}"
-    Environment = terraform.workspace
-    Project     = var.project_name
-    ManagedBy   = "Terraform"
-  }
-}
-
-resource "aws_lb_listener" "grafana" {
-  load_balancer_arn = aws_lb.grafana.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.grafana.arn
-  }
-
-  tags = {
-    Name        = "${var.project_name}-grafana-listener-${terraform.workspace}"
     Environment = terraform.workspace
     Project     = var.project_name
     ManagedBy   = "Terraform"
@@ -226,6 +172,34 @@ resource "aws_efs_mount_target" "observability_b" {
   file_system_id  = aws_efs_file_system.observability.id
   subnet_id       = aws_subnet.private_app_b.id
   security_groups = [aws_security_group.observability.id]
+}
+
+# Grafana corre como usuario no-root (UID/GID 472) dentro del contenedor
+# oficial — sin un Access Point que fuerce ese ownership al montar, la raíz
+# de EFS queda de root y Grafana no puede escribir ("Permission denied").
+resource "aws_efs_access_point" "grafana" {
+  file_system_id = aws_efs_file_system.observability.id
+
+  posix_user {
+    uid = 472
+    gid = 472
+  }
+
+  root_directory {
+    path = "/grafana"
+    creation_info {
+      owner_uid   = 472
+      owner_gid   = 472
+      permissions = "755"
+    }
+  }
+
+  tags = {
+    Name        = "${var.project_name}-grafana-efs-ap-${terraform.workspace}"
+    Environment = terraform.workspace
+    Project     = var.project_name
+    ManagedBy   = "Terraform"
+  }
 }
 
 # --- IAM Roles for Observability Tasks ---
@@ -313,8 +287,35 @@ resource "aws_iam_role" "grafana_task" {
   })
 }
 
+# Permiso para montar el volumen vía el Access Point (autorización IAM del
+# mount, además del ownership POSIX que ya fuerza el propio Access Point).
+resource "aws_iam_role_policy" "grafana_efs" {
+  name = "${var.project_name}-grafana-efs-policy-${terraform.workspace}"
+  role = aws_iam_role.grafana_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticfilesystem:ClientMount",
+          "elasticfilesystem:ClientWrite"
+        ]
+        Resource = aws_efs_file_system.observability.arn
+        Condition = {
+          StringEquals = {
+            "elasticfilesystem:AccessPointArn" = aws_efs_access_point.grafana.arn
+          }
+        }
+      }
+    ]
+  })
+}
+
 # Permissions for Grafana to read CloudWatch logs and metrics
 resource "aws_iam_policy" "grafana_cloudwatch_readonly" {
+  # checkov:skip=CKV_AWS_355: Las acciones de lectura de CloudWatch y Logs (GetMetricData, StartQuery, etc.) requieren acceso a nivel de cuenta (*) o no soportan restricciones por recurso.
   name = "${var.project_name}-grafana-cloudwatch-policy-${terraform.workspace}"
 
   policy = jsonencode({
@@ -326,9 +327,12 @@ resource "aws_iam_policy" "grafana_cloudwatch_readonly" {
           "cloudwatch:GetMetricData",
           "cloudwatch:ListMetrics",
           "cloudwatch:GetMetricStatistics",
+          "logs:DescribeLogGroups",
           "logs:GetLogGroupFields",
           "logs:StartQuery",
+          "logs:StopQuery",
           "logs:GetQueryResults",
+          "logs:GetLogEvents",
           "ec2:DescribeTags"
         ]
         Resource = "*"
@@ -379,6 +383,7 @@ resource "aws_ecs_cluster" "observability" {
 
 # --- Prometheus Task & Service ---
 resource "aws_ecs_task_definition" "prometheus" {
+  # checkov:skip=CKV_AWS_336: Prometheus requiere acceso de escritura a directorios temporales del sistema (/tmp) para su correcto funcionamiento y manejo de cache en caliente que no pueden delegarse eficientemente a volumenes externos.
   family                   = "${var.project_name}-prometheus-${terraform.workspace}"
   cpu                      = "512"
   memory                   = "1024"
@@ -457,6 +462,7 @@ resource "aws_ecs_service" "prometheus" {
 
 # --- Grafana Task & Service ---
 resource "aws_ecs_task_definition" "grafana" {
+  # checkov:skip=CKV_AWS_336: Grafana necesita permisos de escritura en root filesystem para la inicializacion y descompresion dinamica de plugins y dependencias en /tmp y /run durante el arranque.
   family                   = "${var.project_name}-grafana-${terraform.workspace}"
   cpu                      = "512"
   memory                   = "1024"
@@ -468,8 +474,12 @@ resource "aws_ecs_task_definition" "grafana" {
   volume {
     name = "grafana-storage"
     efs_volume_configuration {
-      file_system_id = aws_efs_file_system.observability.id
-      root_directory = "/"
+      file_system_id     = aws_efs_file_system.observability.id
+      transit_encryption = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.grafana.id
+        iam             = "ENABLED"
+      }
     }
   }
 
@@ -487,7 +497,13 @@ resource "aws_ecs_task_definition" "grafana" {
       containerPath = "/var/lib/grafana"
     }]
     environment = [
-      { name = "GF_SECURITY_ADMIN_USER", value = "admin" }
+      { name = "GF_SECURITY_ADMIN_USER", value = "admin" },
+      # Grafana vive detrás de CloudFront en el path /grafana/* (ver
+      # cloudfront.tf) — sin esto, sus assets (CSS/JS) y links internos se
+      # generan apuntando a la raíz del dominio y rompen.
+      { name = "GF_SERVER_ROOT_URL", value = "https://${aws_cloudfront_distribution.frontend_cdn.domain_name}/grafana/" },
+      { name = "GF_SERVER_SERVE_FROM_SUB_PATH", value = "true" },
+      { name = "GF_SECURITY_CSRF_TRUSTED_ORIGINS", value = "https://${aws_cloudfront_distribution.frontend_cdn.domain_name}" }
     ]
     secrets = [
       {
